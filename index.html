@@ -1,0 +1,24 @@
+<main id="rtSecurePortal">
+  <div class="card audit-gateway">
+    <h3><i class="fas fa-shield-virus"></i> Request Security Audit</h3>
+    <div class="input-group">
+      <input type="text" id="targetContract" placeholder="Contract Address (0x...)">
+      <select id="auditType">
+        <option value="0">One-Time Scan (100 LCAI)</option>
+        <option value="1">Monthly Subscription (500 LCAI)</option>
+      </select>
+    </div>
+    <button class="btn-zk" onclick="requestAudit()">INITIATE SECURE SCAN</button>
+  </div>
+
+  <div class="analysis-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div class="card">
+      <h4><i class="fas fa-code"></i> Stage 1: Static Analysis</h4>
+      <div id="staticLog" class="terminal-feed">Awaiting contract...</div>
+    </div>
+    <div class="card">
+      <h4><i class="fas fa-brain"></i> Stage 2: AI Semantic Audit</h4>
+      <div id="aiNeuralLog" class="terminal-feed">Standing by for AIVM...</div>
+    </div>
+  </div>
+</main>
