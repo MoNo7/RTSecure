@@ -196,10 +196,10 @@
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="targetAddr" placeholder="Contract Address (0x...)">
                     <select id="scanSelect">
-                        <option>One-Time Scan - Standard Audit (100 LCAI)</option>
-                        <option>Deep Scan - Red Team Audit (500 LCAI)</option>
+                        <option value="0">One-Time Scan - Standard Audit (100 LCAI)</option>
+                        <option value="1">Deep Scan - Red Team Audit (500 LCAI)</option>
                     </select>
-                    <button>INITIATE SECURE SCAN</button>
+                    <button onclick="startAuditProtocol()">INITIATE SECURE SCAN</button>
                 </div>
 
                 <div class="terminal" id="term">
