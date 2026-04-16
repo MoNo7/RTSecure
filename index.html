@@ -194,15 +194,15 @@
             <div class="audit-card">
                 <h2>Request Security Audit</h2>
                 <div style="display: flex; gap: 10px;">
-                    <input type="text" placeholder="Contract Address (0x...)">
-                    <select>
+                    <input type="text" id="targetAddr" placeholder="Contract Address (0x...)">
+                    <select id="scanSelect">
                         <option>One-Time Scan - Standard Audit (100 LCAI)</option>
                         <option>Deep Scan - Red Team Audit (500 LCAI)</option>
                     </select>
                     <button>INITIATE SECURE SCAN</button>
                 </div>
 
-                <div class="terminal">
+                <div class="terminal" id="term">
                     <div class="log-entry"><span class="green">[SYS]</span> Initializing RTSecure AI Engine...</div>
                     <div class="log-entry"><strong>Stage 1: Static Analysis</strong></div>
                     <div class="log-entry"> > Awaiting contract address...</div>
