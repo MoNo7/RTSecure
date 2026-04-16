@@ -215,6 +215,8 @@
     </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
@@ -280,71 +282,39 @@
     }
 
     // --- Option 1: Functional Quick Static Scan ---
-    async function executeStaticAnalysis(address) {
-        log("<strong>Stage 1: Initiating AIVM Static Vulnerability Scan</strong>");
-        log("> Fetching bytecode context...");
-
-        try {
-            const response = await fetch("https://chat2.lightchain.ai/api/v1/chat/completions", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${await activeSigner.getAddress()}`
-                },
-                body: JSON.stringify({
-                    model: "Neural-Llama-3-70B",
-                    messages: [
-                        { 
-                            role: "system", 
-                            content: "You are a Static Analysis Tool (similar to Slither). Scan the following address for: 1. Reentrancy 2. Integer Overflow 3. Visibility Errors 4. Uninitialized Storage. Output a bulleted list of technical warnings and an overall safety score (0-100)." 
-                        },
-                        { role: "user", content: `Perform a static analysis on contract: ${address}` }
-                    ],
-                    temperature: 0.1 // Low temperature for high precision/consistency
-                })
-            });
-
-            const data = await response.json();
-            const report = data.choices[0].message.content;
-            log("<div class='report-box' style='color:#8b949e; border-left:2px solid var(--accent-green);'>" + report.replace(/\n/g, "<br>") + "</div>");
-            
-        } catch (e) {
-            throw new Error("AIVM Static Gateway Timeout. Check LCAI Balance.");
+    async function runWorkerScan(address, type) {
+        log(`[${type === 0 ? 'QUICK' : 'DEEP'}] Contacting Cloudflare Worker...`);
+        
+        const response = await fetch("https://your-worker-name.workers.dev", {
+            method: "POST",
+            body: JSON.stringify({ address, scanType: type })
+        });
+        
+        const { report } = await response.json();
+    
+        if (type === 0) {
+            // Quick Scan: Just show in terminal
+            log("<div style='color:var(--accent-green); border-left:2px solid; padding-left:10px;'>" + report.replace(/\n/g, "<br>") + "</div>");
+        } else {
+            // Deep Scan: Generate PDF
+            generatePDF(address, report);
         }
     }
-
-    // --- Option 2: Red Team DeFi Scan ---
-    async function executeDeFiRedTeamScan(address) {
-        log("<br><strong>Stage 2: Initiating Deep DeFi Red Team Audit</strong>");
-        log("> Synchronizing with AIVM...");
-
-        try {
-            const response = await fetch("https://chat2.lightchain.ai/api/v1/chat/completions", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${await activeSigner.getAddress()}`
-                },
-                body: JSON.stringify({
-                    model: "Neural-Llama-3-70B",
-                    messages: [
-                        { 
-                            role: "system", 
-                            content: "You are an Elite DeFi Red Team Specialist. Focus on economic exploits: 1. Flash loan vectors 2. Oracle manipulation 3. Sandwiching. Provide exploit scenarios." 
-                        },
-                        { role: "user", content: `Deep audit for DeFi exploits: ${address}` }
-                    ],
-                    temperature: 0.2
-                })
-            });
-
-            const data = await response.json();
-            log("<div class='report-box' style='border-left:2px solid var(--accent-blue);'>" + data.choices[0].message.content.replace(/\n/g, "<br>") + "</div>");
-        } catch (e) {
-            throw new Error("AIVM Red Team Gateway Timeout.");
-        }
+    
+    function generatePDF(address, content) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFont("courier");
+        doc.text("RTSecure Conclusive Audit Report", 20, 20);
+        doc.setFontSize(10);
+        doc.text(`Contract: ${address}`, 20, 30);
+        
+        const splitText = doc.splitTextToSize(content, 170);
+        doc.text(splitText, 20, 45);
+        
+        doc.save(`RTSecure_Audit_${address.slice(0,8)}.pdf`);
+        log("<span class='blue'>[FILE]</span> Deep Scan Complete. PDF Downloaded.");
     }
-
     // --- Production Payment Handler ---
     async function handleLcaiPayment(amount) {
         const tokenAbi = ["function approve(address spender, uint256 amount) public returns (bool)"];
