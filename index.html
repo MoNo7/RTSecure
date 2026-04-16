@@ -185,7 +185,9 @@
                 <span>ETH: $2,355.81</span>
                 <span>LCAI: $0.005086</span>
             </div>
-            <div style="font-size: 0.8rem;">[ ]</div>
+            <div id="walletDisplay" onclick="connectWallet()" style="font-size: 0.8rem; cursor:pointer; color:var(--accent-blue);">
+                [ CONNECT WALLET ]
+            </div>
         </header>
 
         <main class="content">
@@ -344,11 +346,15 @@
 
     // --- Wallet & Logging ---
     async function connectWallet() {
-        if (!window.ethereum) throw new Error("MetaMask not found.");
+        if (!window.ethereum) return log("Please install MetaMask");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await provider.send("eth_requestAccounts", []);
         activeSigner = await provider.getSigner();
-        log(`[AUTH] Link Established: ${accounts[0].slice(0,6)}...`);
+        
+        // Update the UI
+        const addr = accounts[0];
+        document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
+        log(`[AUTH] Wallet Linked: ${addr}`);
     }
 
     function log(msg) {
@@ -368,12 +374,15 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
 
 async function updateAdminStats() {
     try {
+        if (!activeSigner) await connectWallet();
         const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
+        // Use the config address directly
         const tokenContract = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, activeSigner);
         const balance = await tokenContract.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
+        
         document.getElementById('adminBalance').innerText = `${ethers.formatEther(balance)} LCAI`;
     } catch (err) {
-        console.error("Admin check failed", err);
+        console.error("Admin check failed:", err);
     }
 }
 
