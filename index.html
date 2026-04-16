@@ -285,7 +285,7 @@
     async function runWorkerScan(address, type) {
         log(`[${type === 0 ? 'QUICK' : 'DEEP'}] Contacting Cloudflare Worker...`);
         
-        const response = await fetch("https://your-worker-name.workers.dev", {
+        const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
             method: "POST",
             body: JSON.stringify({ address, scanType: type })
         });
