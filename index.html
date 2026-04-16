@@ -1,24 +1,207 @@
-<main id="rtSecurePortal">
-  <div class="card audit-gateway">
-    <h3><i class="fas fa-shield-virus"></i> Request Security Audit</h3>
-    <div class="input-group">
-      <input type="text" id="targetContract" placeholder="Contract Address (0x...)">
-      <select id="auditType">
-        <option value="0">One-Time Scan (100 LCAI)</option>
-        <option value="1">Monthly Subscription (500 LCAI)</option>
-      </select>
-    </div>
-    <button class="btn-zk" onclick="requestAudit()">INITIATE SECURE SCAN</button>
-  </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lightchain AI | RTSecure Audit</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0d1117;
+            --bg-sidebar: #010409;
+            --bg-card: #161b22;
+            --border: #30363d;
+            --text-main: #c9d1d9;
+            --accent-green: #3fb950;
+            --accent-blue: #58a6ff;
+        }
 
-  <div class="analysis-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-    <div class="card">
-      <h4><i class="fas fa-code"></i> Stage 1: Static Analysis</h4>
-      <div id="staticLog" class="terminal-feed">Awaiting contract...</div>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Fira Code', monospace;
+            overflow: hidden;
+        }
+
+        .layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 240px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+        }
+
+        .logo {
+            padding: 0 20px 20px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: white;
+            letter-spacing: 1px;
+        }
+
+        .nav-section {
+            font-size: 0.7rem;
+            color: #8b949e;
+            padding: 15px 20px 5px;
+            text-transform: uppercase;
+        }
+
+        .nav-item {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-item:hover {
+            background: #161b22;
+            color: var(--accent-blue);
+        }
+
+        .nav-item.active {
+            border-left: 3px solid var(--accent-green);
+            background: #161b22;
+        }
+
+        /* Main Content & Top Bar */
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            height: 60px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            background: var(--bg-main);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.8rem;
+        }
+
+        .stat-online { color: var(--accent-green); }
+
+        /* Audit Interface Area */
+        .content {
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .audit-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 25px;
+            max-width: 800px;
+        }
+
+        h2 { margin-top: 0; font-size: 1.2rem; }
+
+        input, select {
+            background: #010409;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: inherit;
+            margin-right: 10px;
+            width: 300px;
+        }
+
+        button {
+            background: var(--accent-green);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Terminal Style Logs */
+        .terminal {
+            margin-top: 30px;
+            background: #000;
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #8b949e;
+        }
+
+        .log-entry { margin-bottom: 8px; }
+        .green { color: var(--accent-green); }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <aside class="sidebar">
+        <div class="logo">LIGHTCHAIN AI</div>
+        
+        <div class="nav-section">AIVM Infrastructure</div>
+        <div class="nav-item">Dashboard</div>
+        <div class="nav-item active">RTSecure Audit</div>
+        
+        <div class="nav-section">Protocol</div>
+        <div class="nav-item">Registry</div>
+        <div class="nav-item">Validator Node</div>
+    </aside>
+
+    <div class="main-container">
+        <header class="top-bar">
+            <div class="stats">
+                <span>NETWORK: <span class="stat-online">● ONLINE</span></span>
+                <span>LOAD: 13.1%</span>
+                <span>ETH: $2,355.81</span>
+                <span>LCAI: $0.005086</span>
+            </div>
+            <div style="font-size: 0.8rem;">[CONNECTED WALLET]</div>
+        </header>
+
+        <main class="content">
+            <div class="audit-card">
+                <h2>Request Security Audit</h2>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" placeholder="Contract Address (0x...)">
+                    <select>
+                        <option>One-Time Scan (100 LCAI)</option>
+                        <option>Monthly Subscription (500 LCAI)</option>
+                    </select>
+                    <button>INITIATE SECURE SCAN</button>
+                </div>
+
+                <div class="terminal">
+                    <div class="log-entry"><span class="green">[SYS]</span> Initializing RTSecure AI Engine...</div>
+                    <div class="log-entry"><strong>Stage 1: Static Analysis</strong></div>
+                    <div class="log-entry"> > Awaiting contract address...</div>
+                    <br>
+                    <div class="log-entry"><strong>Stage 2: AI Semantic Audit</strong></div>
+                    <div class="log-entry"> > Standing by for AIVM...</div>
+                </div>
+            </div>
+        </main>
     </div>
-    <div class="card">
-      <h4><i class="fas fa-brain"></i> Stage 2: AI Semantic Audit</h4>
-      <div id="aiNeuralLog" class="terminal-feed">Standing by for AIVM...</div>
-    </div>
-  </div>
-</main>
+</div>
+
+</body>
+</html>
