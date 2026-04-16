@@ -199,9 +199,6 @@
     </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
@@ -325,7 +322,7 @@
         await appTx.wait();
         
         log(`[PAYMENT] Anchoring Audit to SecurityOracle...`);
-        const auditTx = await oracleContract.requestAudit(document.querySelector('input').value, amount);
+        const auditTx = await oracleContract.requestAudit(targetAddress, scanType);
         await auditTx.wait();
         
         log("<span class='green'>[SUCCESS]</span> Payment confirmed and Audit Task anchored.");
