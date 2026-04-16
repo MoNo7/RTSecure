@@ -278,6 +278,8 @@ async function startAuditProtocol() {
         });
 
         const data = await response.json();
+        // Ensure data.report exists and is a string before replacing
+        const finalReport = data.report || "Error: Received empty report from AIVM.";
         
         if (data.error) {
             throw new Error(data.error);
@@ -285,9 +287,10 @@ async function startAuditProtocol() {
 
         if (type === 0) {
             log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
-            log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${data.report.replace(/\n/g, '<br>')}</div>`);
+            // Safe replace call
+            log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${String(finalReport).replace(/\n/g, '<br>')}</div>`);
         } else {
-            generateProfessionalPDF(target, data.report);
+            generateProfessionalPDF(target, String(finalReport));
         }
     } catch (e) {
         log(`<span style='color:red'>[FAIL]</span> ${e.message}`);
