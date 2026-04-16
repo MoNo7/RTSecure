@@ -227,36 +227,56 @@
     };
 
     let activeSigner = null;
+    let oracleContract = null;
+
+    // --- Wallet & Logging ---
+    async function connectWallet() {
+        if (!window.ethereum) return log("Please install MetaMask");
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        activeSigner = await provider.getSigner();
+        
+        // Update the UI
+        const addr = accounts[0];
+        document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
+        log(`[AUTH] Wallet Linked: ${addr}`);
+        setupEventListener();
+    }
+
+    
+    function setupEventListener() {
+        const abi = ["event AuditRequested(uint256 indexed taskId, address targetContract, uint8 auditType)"];
+        oracleContract = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+        
+        oracleContract.on("AuditRequested", (taskId, target, type) => {
+            log(`<span class='green'>[EVENT]</span> AIVM Task #${taskId} detected for ${target.slice(0,10)}...`);
+            log(`> Dispatching to Lightchain Worker Pool...`);
+        });
+    }
 
     // --- Main Audit Pipeline ---
     async function startAuditProtocol() {
-        const targetAddress = document.querySelector('input').value;
-        const scanType = document.querySelector('select').selectedIndex; 
-
-        if (!ethers.isAddress(targetAddress)) {
-            return log("<span style='color:var(--accent-blue)'>[ERR]</span> Invalid Contract Address.");
-        }
-
+        const target = document.getElementById('targetAddr').value;
+        const type = document.getElementById('scanSelect').value;
+        if (!ethers.isAddress(target)) return log("Invalid Address");
+        
         try {
             if (!activeSigner) await connectWallet();
+            const fee = type == "0" ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
             
-            // 1. Production Payment Gate: Approve & Escrow LCAI
-            const fee = scanType === 0 ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
-            await handleLcaiPayment(fee);
-
-            // 2. Execute Selected Scan
-            if (scanType === 0) {
-                await executeStaticAnalysis(targetAddress);
-            } else {
-                // Runs Stage 1 then Stage 2 for Red Team
-                await executeStaticAnalysis(targetAddress);
-                await executeDeFiRedTeamScan(targetAddress);
-            }
-
-            log("<br><span class='green'>[COMPLETE]</span> Full Security Protocol Finalized.");
-        } catch (err) {
-            log(`<span style='color:#ff4444'>[FATAL]</span> Protocol Aborted: ${err.message}`);
-        }
+            // Payment Step
+            log(`[PAYMENT] Approving ${ethers.formatEther(fee)} LCAI...`);
+            const tAbi = ["function approve(address s, uint256 a) public returns (bool)"];
+            const tContract = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tAbi, activeSigner);
+            await (await tContract.approve(RTS_CONFIG.SECURITY_ORACLE, fee)).wait();
+            
+            log(`[ANCHOR] Submitting Request to Oracle...`);
+            const oAbi = ["function requestAudit(address t, uint8 ty) public"];
+            const oContract = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, oAbi, activeSigner);
+            await (await oContract.requestAudit(target, type)).wait();
+            
+            log("<span class='green'>[SUCCESS]</span> Task anchored on Lightchain.");
+        } catch (e) { log(`[ERR] ${e.message}`); }
     }
 
     // --- Option 1: Functional Quick Static Scan ---
@@ -344,24 +364,7 @@
         log("<span class='green'>[SUCCESS]</span> Payment confirmed and Audit Task anchored.");
     }
 
-    // --- Wallet & Logging ---
-    async function connectWallet() {
-        if (!window.ethereum) return log("Please install MetaMask");
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        activeSigner = await provider.getSigner();
-        
-        // Update the UI
-        const addr = accounts[0];
-        document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
-        log(`[AUTH] Wallet Linked: ${addr}`);
-    }
 
-    function log(msg) {
-        const terminal = document.querySelector('.terminal');
-        terminal.innerHTML += `<div class='log-entry'>${msg}</div>`;
-        terminal.scrollTop = terminal.scrollHeight;
-    }
 
     document.querySelector('button').onclick = startAuditProtocol;
     // Toggle Admin Panel (Triggered by clicking the "Online" status)
@@ -372,38 +375,36 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
     if (panel.style.display === 'block') updateAdminStats();
 };
 
-async function updateAdminStats() {
-    try {
-        if (!activeSigner) await connectWallet();
-        const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-        // Use the config address directly
-        const tokenContract = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, activeSigner);
-        const balance = await tokenContract.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
-        
-        document.getElementById('adminBalance').innerText = `${ethers.formatEther(balance)} LCAI`;
-    } catch (err) {
-        console.error("Admin check failed:", err);
+// --- Admin Functions ---
+    function toggleAdmin() {
+        const p = document.getElementById('adminPanel');
+        p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        if(p.style.display === 'block') updateAdminStats();
     }
-}
 
-async function adminWithdraw() {
-    const adminLog = document.getElementById('adminLog');
-    try {
-        const oracleAbi = ["function withdrawFees(address to) external"];
-        const oracleContract = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, oracleAbi, activeSigner);
-        const myAddress = await activeSigner.getAddress();
-        
-        adminLog.innerHTML = "> Initiating withdrawal...";
-        const tx = await oracleContract.withdrawFees(myAddress);
-        adminLog.innerHTML = "> Transaction pending...";
-        await tx.wait();
-        
-        adminLog.innerHTML = "<span class='green'>[SUCCESS]</span> Fees transferred to wallet.";
-        updateAdminStats();
-    } catch (err) {
-        adminLog.innerHTML = `<span style='color:#ff4444'>[ERR]</span> ${err.reason || "Owner only function"}`;
+    async function updateAdminStats() {
+        const abi = ["function balanceOf(address) view returns (uint256)"];
+        const c = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
+        const b = await c.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
+        document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
     }
-}
+
+    async function adminWithdraw() {
+        try {
+            const abi = ["function withdrawFees(address to) external"];
+            const c = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+            await (await c.withdrawFees(await activeSigner.getAddress())).wait();
+            log("Withdrawal Complete");
+            updateAdminStats();
+        } catch (e) { alert("Owner Only"); }
+    }
+
+    function log(m) {
+        const t = document.getElementById('term');
+        t.innerHTML += `<div class='log-entry'>${m}</div>`;
+        t.scrollTop = t.scrollHeight;
+    }
+    
 </script>
     
 </body>
