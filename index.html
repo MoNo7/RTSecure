@@ -274,7 +274,11 @@ async function startAuditProtocol() {
         const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ address: target, scanType: type })
+            body: JSON.stringify({ 
+                address: target, 
+                scanType: type,
+                userAddress: await activeSigner.getAddress() // Sends your current wallet
+            })
         });
 
         const data = await response.json();
