@@ -298,6 +298,29 @@ async function startAuditProtocol() {
     }
 }
 
+    function generateProfessionalPDF(address, content) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Styling
+        doc.setFillColor(13, 17, 23); 
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(88, 166, 255);
+        doc.setFontSize(22);
+        doc.text("RTSecure AI Audit Report", 20, 25);
+        
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text(`Target Contract: ${address}`, 20, 50);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 56);
+        
+        const splitText = doc.splitTextToSize(content, 170);
+        doc.text(splitText, 20, 70);
+        
+        doc.save(`RTSecure_Audit_${address.slice(0,8)}.pdf`);
+        log("<span class='blue'>[FILE]</span> Deep Scan Complete. PDF Downloaded.");
+    }
+
     // --- Option 1: Functional Quick Static Scan ---
     async function runWorkerScan(address, type) {
         log(`[${type === 0 ? 'QUICK' : 'DEEP'}] Contacting Cloudflare Worker...`);
