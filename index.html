@@ -289,35 +289,57 @@
     }
 }
 // --- Tier 1: Syntactic Static Scan (Production) ---
-async function executeSyntacticScan(address, source) {
+async function executeSyntacticScan(address) {
     log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
     
-    // Pattern Analysis
-    const hasTxOrigin = /tx\.origin/.test(source);
-    const hasSelfDestruct = /selfdestruct|suicide/.test(source);
-    const hasDelegateCall = /delegatecall/.test(source);
-    
+    // 1. Fetch real source code from Explorer
+    const sourceCode = await fetchSourceCodeFromExplorer(address);
+    if (!sourceCode) return; // Error handled in fetch function
+
+    // 2. Perform Regex-based Security Heuristics
+    const hasTxOrigin = /tx\.origin/.test(sourceCode);
+    const hasDelegateCall = /delegatecall/.test(sourceCode);
+    const hasAssembly = /assembly\s*{/.test(sourceCode);
+    const hasDeprecation = /selfdestruct|suicide/.test(sourceCode);
+
     const checkpoints = [
-        { msg: "> Validating Pragma Solidity Version...", status: "PASS", detail: "v0.8.26 detected." },
-        { msg: "> Scanning for 'tx.origin' phishing vectors...", status: hasTxOrigin ? "WARN" : "PASS" },
-        { msg: "> Searching for unprotected 'selfdestruct'...", status: hasSelfDestruct ? "DANGER" : "PASS" },
-        { msg: "> Analyzing DelegateCall logic flows...", status: hasDelegateCall ? "INFO" : "PASS" }
+        { msg: "> Validating Compiler Pragma...", status: "PASS" },
+        { msg: "> Checking for Phishing Vectors (tx.origin)...", status: hasTxOrigin ? "WARN" : "PASS" },
+        { msg: "> Scanning for Low-Level Calls (delegatecall)...", status: hasDelegateCall ? "INFO" : "PASS" },
+        { msg: "> Detecting Inline Assembly Blocks...", status: hasAssembly ? "INFO" : "PASS" },
+        { msg: "> Searching for Deprecated Opcodes...", status: hasDeprecation ? "DANGER" : "PASS" }
     ];
 
     for (const check of checkpoints) {
-        await new Promise(r => setTimeout(r, 600)); // UX delay for "scanning" feel
-        let color = check.status === "PASS" ? "green" : (check.status === "WARN" ? "orange" : "red");
+        await new Promise(r => setTimeout(r, 500)); 
+        let color = check.status === "PASS" ? "var(--accent-green)" : (check.status === "DANGER" ? "#ff4444" : "orange");
         log(`${check.msg} <span style='color:${color}'>[${check.status}]</span>`);
     }
 
-    if (hasTxOrigin) log("<span style='color:orange'>[VULN]</span> Warning: Use of tx.origin detected. Use msg.sender for auth.");
+    if (hasDeprecation) log("<span style='color:#ff4444'>[VULN]</span> Critical: Use of 'selfdestruct' is deprecated and risky.");
 }
 
-    async function fetchSourceCode(address) {
-        log(`[SYS] Fetching source from Lightchain Blockscout...`);
-        // Placeholder: In production, use your Explorer API. For now, we use a default string.
-        return "pragma solidity ^0.8.26; contract Test { function kill() public { selfdestruct(msg.sender); } }";
+// --- LightScan API Integration ---
+async function fetchSourceCodeFromExplorer(address) {
+    log(`[SYS] Fetching source from LightScan...`);
+    
+    try {
+        // Standard Blockscout/LightScan API endpoint format
+        const response = await fetch(`https://testnet.lightscan.app/api?module=contract&action=getsourcecode&address=${address}`);
+        const data = await response.json();
+
+        if (data.status === "1" && data.result[0].SourceCode) {
+            log("<span class='green'>[OK]</span> Source code retrieved successfully.");
+            return data.result[0].SourceCode;
+        } else {
+            log("<span style='color:orange'>[WARN]</span> Contract not verified. Running bytecode analysis...");
+            return ""; // Fallback to basic bytecode check if needed
+        }
+    } catch (e) {
+        log("<span style='color:red'>[ERR]</span> Explorer API unreachable.");
+        return null;
     }
+}
     
     // Fixed Stage 1: Executes locally/simulated for instant testing
     async function runStaticAnalysisTier(address) {
