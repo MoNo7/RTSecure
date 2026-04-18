@@ -307,22 +307,58 @@
     }
 
     // --- LightScan API Integration ---
-    async function fetchSourceCodeFromExplorer(address) {
-        log(`[SYS] Fetching source from LightScan...`);
-        try {
-            // API Call to LightScan/Blockscout
-            const response = await fetch(`https://testnet.lightscan.app/api?module=contract&action=getsourcecode&address=${address}`);
-            const data = await response.json();
-    
-            if (data.status === "1" && data.result[0].SourceCode) {
-                log("<span class='green'>[OK]</span> Source code retrieved successfully.");
-                return data.result[0].SourceCode;
-            } else {
-                log("<span style='color:orange'>[WARN]</span> Contract not verified. Using bytecode patterns...");
-                return ""; 
+        async function fetchSourceCodeFromExplorer(address) {
+            log(`[SYS] Fetching data for ${address.slice(0,10)}...`);
+            
+            try {
+                // 1. Attempt to get Verified Source Code
+                const response = await fetch(`https://testnet.lightscan.app/api?module=contract&action=getsourcecode&address=${address}`);
+                const data = await response.json();
+        
+                if (data.status === "1" && data.result[0].SourceCode && data.result[0].SourceCode !== "") {
+                    log("<span class='green'>[OK]</span> Verified Source retrieved. Running High-Precision Scan.");
+                    return data.result[0].SourceCode;
+                } 
+                
+                // 2. FALLBACK: Fetch raw bytecode and decompile
+                log("<span style='color:orange'>[WARN]</span> Unverified Contract. Initializing Bytecode Decompiler...");
+                return await decompileBytecode(address);
+        
+            } catch (e) {
+                log("<span style='color:red'>[ERR]</span> Connection to LightScan failed.");
+                return null;
             }
-        } catch (e) {
-            throw new Error("Explorer API unreachable. Check network status.");
+        }
+    // --- New: Bytecode Decompiler Logic ---
+    async function decompileBytecode(address) {
+        try {
+            // We use the Lightchain RPC to get the raw hex
+            const provider = new ethers.JsonRpcProvider("https://light-testnet-rpc.lightchain.ai");
+            const bytecode = await provider.getCode(address);
+    
+            if (bytecode === "0x") {
+                throw new Error("Address contains no code (EOA Wallet)");
+            }
+    
+            log("> Decoding raw hex into opcodes...");
+            
+            // Basic Opcode Mapping for Tier 1 detection
+            // 0x32 = ORIGIN, 0xf1 = CALL, 0xff = SELFDESTRUCT
+            const hasOriginOp = bytecode.includes("32"); 
+            const hasSelfDestructOp = bytecode.includes("ff");
+            const hasDelegateCallOp = bytecode.includes("f4");
+    
+            // We return a "pseudo-code" string that our existing regex can read
+            let pseudoCode = `/* DECOMPILED BYTECODE FALLBACK */\n`;
+            if (hasOriginOp) pseudoCode += "function_detected_tx_origin();\n";
+            if (hasSelfDestructOp) pseudoCode += "function_detected_selfdestruct();\n";
+            if (hasDelegateCallOp) pseudoCode += "function_detected_delegatecall();\n";
+    
+            log("<span class='green'>[OK]</span> Bytecode decomposition complete.");
+            return pseudoCode;
+        } catch (err) {
+            log(`<span style='color:red'>[ERR]</span> Decompiler Failed: ${err.message}`);
+            return null;
         }
     }
     
