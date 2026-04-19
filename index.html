@@ -344,6 +344,13 @@
             
             log(`[SYS] Requesting Syntactic Analysis for ${target.slice(0,8)}...`);
             log("<strong>[STAGE 1] Syntactic & Slither Static Scan</strong>");
+            if (type === 1) {
+                log("<strong>[STAGE 2] AIVM Semantic Audit (Neural-Llama-3-70B)</strong>");
+                log(`> Uploading source code to Lightchain AI engine...`);
+                log(`> Analyzing logic pathways and cross-contract calls...`);
+            } else {
+                log(`[SYS] Requesting Syntactic Analysis for ${target.slice(0,8)}...`);
+            }
         
             try {
                 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
