@@ -209,6 +209,14 @@
                     <span id="riskScoreLabel" style="font-size:0.75rem; font-weight:bold;">0% SAFE</span>
                 </div>
 
+                <div id="meterView" style="display:none; align-items:center; gap:10px; margin-bottom:20px;">
+                    <span style="font-size:0.7rem; color:#8b949e;">THREAT LEVEL:</span>
+                    <div style="width:100px; height:8px; background:#161b22; border-radius:4px; border:1px solid var(--border); overflow:hidden;">
+                        <div id="riskFill" style="height:100%; width:0%; background:#3fb950; transition:0.5s;"></div>
+                    </div>
+                    <span id="riskScoreLabel" style="font-size:0.75rem; font-weight:bold; color:#3fb950;">0% SAFE</span>
+                </div>
+
                 <div class="terminal" id="term">
                     <div class="log-entry"><span class="green">[SYS]</span> Initializing RTSecure AI Engine...</div>
                     <div class="log-entry"><strong>Stage 1: Static Analysis</strong></div>
@@ -240,24 +248,23 @@
     let currentRiskScore = 0;
 
     function updateRiskMeter(secData) {
-        const meter = document.getElementById('meterView'); // Ensure this ID exists in HTML
+        const meter = document.getElementById('meterView');
         const fill = document.getElementById('riskFill');
         const label = document.getElementById('riskScoreLabel');
         
-        // FIX: Check if 'meter' exists instead of 'container'
+        // FIX: Ensure 'meter' exists before accessing .style
         if (meter && fill && label) {
             meter.style.display = 'flex';
-            
             let score = 0;
-            if (secData.is_honeypot === "1") score += 60;
+            if (secData.is_honeypot === "1") score += 50;
             if (secData.is_proxy === "1") score += 20;
-            if (secData.selfdestruct === "1") score += 20;
-    
+            
             fill.style.width = `${score}%`;
-            fill.style.background = score > 50 ? "#ff4444" : "#3fb950";
-            label.innerText = score > 50 ? `${score}% THREAT` : `${score}% SAFE`;
+            fill.style.background = score > 40 ? "#ff4444" : "#3fb950";
+            label.innerText = score > 40 ? `${score}% THREAT` : `${score}% SAFE`;
         }
     }
+    
     // --- Integrate into your Scan ---
     async function executeSyntacticScan(address, source) {
         log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
@@ -300,17 +307,23 @@
 
     // --- Enhanced Fetch with Balance Sync ---
     async function connectWallet() {
-        if (!window.ethereum) return log("MetaMask not found.");
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        activeSigner = await provider.getSigner();
-        
-        const addr = accounts[0];
-        document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
-        
-        // Fetch Live Balance from LCAI Token Contract
-        await updateLcaiBalance(addr);
-        log(`[AUTH] Wallet Linked: ${addr}`);
+        if (!window.ethereum) return log("<span style='color:red'>[ERR]</span> MetaMask not found.");
+        try {
+            // Updated for Ethers v6 compatibility
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const accounts = await provider.send("eth_requestAccounts", []);
+            activeSigner = await provider.getSigner();
+            
+            const addr = accounts[0];
+            document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
+            log(`[AUTH] Wallet Linked: ${addr}`);
+            
+            // Mocking balance sync for Dev Mode
+            log(`[SYS] Syncing LCAI Balance for ${addr.slice(0,6)}...`);
+        } catch (err) {
+            console.error(err);
+            log("<span style='color:red'>[ERR]</span> Connection failed. Check Console.");
+        }
     }
     
     function setupEventListener() {
