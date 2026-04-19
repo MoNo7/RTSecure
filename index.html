@@ -347,17 +347,12 @@
 
         // --- Main Audit Pipeline ---
         async function startAuditProtocol() {
-            const target = document.getElementById('targetAddr').value.trim();
+           const target = document.getElementById('targetAddr').value.trim();
             const pastedCode = document.getElementById('unverifiedCode').value.trim();
             const type = parseInt(document.getElementById('scanSelect').value);
             const isPasteMode = document.getElementById('unverifiedCode').style.display === 'block';
         
             const sourceToAnalyze = isPasteMode ? pastedCode : null;
-        
-            if (!isPasteMode && (!target || target.length < 42)) {
-                return log("<span style='color:red'>[ERR]</span> Valid Address Required.");
-            }
-        
             log(`[SYS] Initiating ${isPasteMode ? 'Manual' : 'Verified'} Scan...`);
         
             try {
@@ -374,20 +369,19 @@
         
                 const data = await response.json();
                 const reportContent = data.report || "No analysis returned.";
-
+                
+                // Use the code returned from worker (verified) OR the pasted code
                 const finalSource = data.sourceCode || pastedCode || "";
         
-                // --- NEW: Run the Visual Static Scan results in the terminal ---
-                // We use data.sourceCode if returned from worker, or the pasted code
-                const codeForStatic = data.sourceCode || pastedCode || "";
-//                await executeSyntacticScan(target || "PastedCode", codeForStatic);
+                // FIX 1: Uncomment this to show Stage 1 results in the terminal window
+                await executeSyntacticScan(target || "PastedCode", finalSource);
         
                 if (type === 0) {
                     log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
                     log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${reportContent.replace(/\n/g, '<br>')}</div>`);
                 } else {
-                    // FIX: Pass data.sourceCode to the PDF generator to avoid "sourceCode is not defined"
-                    generateProfessionalPDF(target || "PastedCode", reportContent, data, codeForStatic);
+                    // FIX 2: Pass 'finalSource' as the 4th argument so the PDF doesn't crash
+                    generateProfessionalPDF(target || "Pasted_Code", reportContent, data, finalSource);
                 }
             } catch (e) {
                 log(`<span style='color:red'>[FAIL]</span> ${e.message}`);
@@ -547,7 +541,7 @@
     }
     
     
-    function generateProfessionalPDF(address, content, data) {
+    function generateProfessionalPDF(address, content, data, sourceCode) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         let y = 60;
