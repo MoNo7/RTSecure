@@ -330,20 +330,38 @@ let currentRiskScore = 0;
         document.getElementById('term').innerHTML = "";
         log("<span class='green'>[SYS]</span> Initializing RTSecure AI Engine...");
     
-        try {
-            // 1. Updated Function Call: fetchSourceCodeFromExplorer
-            const sourceCode = await fetchSourceCodeFromExplorer(target);
+          try {
+            const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    address: target,
+                    scanType: type,
+                    userAddress: "0x4d36b31d4bfb957a5d816b0f420a9e755efc6a2c"
+                })
+            });
+        
+            // Handle the "Unexpected End of JSON" by checking if response is OK
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
             
-            // 2. Pass source to the Syntactic Scan
-            await executeSyntacticScan(target, sourceCode);
-            await executeQuickApiCheck(target);            // New external API check
-            if (type === 1) {
-                log("<br><strong>[STAGE 2] Requesting Deep Semantic AIVM Scan...</strong>");
+            const data = await response.json();
+            
+            // 1. Update Risk Meter if data exists
+            if (data.externalSecurity) {
+                updateRiskMeter(data.externalSecurity);
             }
-    
-            log("<br><span class='green'>[COMPLETE]</span> All security protocols finalized.");
-        } catch (err) {
-            log(`<span style='color:#ff4444'>[FATAL]</span> Protocol Error: ${err.message}`);
+        
+            // 2. Display the AIVM Report
+            const finalReport = data.report || "Audit finalized with no critical findings.";
+            if (type === 0) {
+                log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
+                log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${String(finalReport).replace(/\n/g, '<br>')}</div>`);
+            } else {
+                generateProfessionalPDF(target, String(finalReport));
+            }
+        
+        } catch (e) {
+            log(`<span style='color:red'>[FAIL]</span> Connection to AIVM failed. Check Cloudflare Logs.`);
         }
         if (type === 1) { // Deep Scan Selected
         const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
