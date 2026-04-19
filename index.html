@@ -520,28 +520,69 @@
     }
     
     
-    function generateProfessionalPDF(address, content) {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
+        function generateProfessionalPDF(address, content, data) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let y = 20;
         
-        // Styling
-        doc.setFillColor(13, 17, 23); 
-        doc.rect(0, 0, 210, 40, 'F');
-        doc.setTextColor(88, 166, 255);
-        doc.setFontSize(22);
-        doc.text("RTSecure AI Audit Report", 20, 25);
+            // Header & Branding
+            doc.setFillColor(13, 17, 23); // Dark theme header
+            doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(88, 166, 255);
+            doc.setFontSize(22);
+            doc.text("RTSecure Deep Audit Report", 20, 28);
+            
+            // Metadata
+            doc.setTextColor(100, 100, 100);
+            doc.setFontSize(9);
+            doc.text(`Target: ${address}`, 20, 48);
+            doc.text(`Generated: ${new Date().toLocaleString()} | Network: Lightchain AI (504)`, 20, 53);
+            y = 65;
         
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(10);
-        doc.text(`Target Contract: ${address}`, 20, 50);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 56);
+            // SECTION 1: STAGE 1 - STATIC ANALYSIS
+            doc.setTextColor(63, 185, 80); // Accent Green
+            doc.setFontSize(14);
+            doc.text("SECTION 1: STATIC & SLITHER ANALYSIS", 20, y);
+            y += 10;
+            
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+            const sa = data.staticAnalysis || {};
+            const sl = data.slitherAnalysis || {};
+            
+            const staticRows = [
+                `Phishing Vectors (tx.origin): ${sa.txOrigin ? "FAILED" : "PASSED"}`,
+                `Low-Level Calls (delegatecall): ${sa.delegateCall ? "RISK DETECTED" : "PASSED"}`,
+                `Reentrancy (Slither Mode): ${sl.reentrancy ? "VULNERABLE" : "SECURE"}`,
+                `Uninitialized Variables: ${sl.uninitializedState ? "WARNING" : "PASSED"}`
+            ];
+            
+            staticRows.forEach(row => {
+                doc.text(`> ${row}`, 25, y);
+                y += 7;
+            });
+            y += 10;
         
-        const splitText = doc.splitTextToSize(content, 170);
-        doc.text(splitText, 20, 70);
+            // SECTION 2: STAGE 2 - AIVM SEMANTIC ANALYSIS
+            doc.setTextColor(88, 166, 255); // Accent Blue
+            doc.setFontSize(14);
+            doc.text("SECTION 2: AIVM DEEP SEMANTIC AUDIT", 20, y);
+            y += 10;
         
-        doc.save(`RTSecure_Audit_${address.slice(0,8)}.pdf`);
-        log("<span class='blue'>[FILE]</span> Deep Scan Complete. PDF Downloaded.");
-    }
+            doc.setTextColor(40, 40, 40);
+            doc.setFontSize(10);
+            const splitContent = doc.splitTextToSize(content, 170);
+            
+            // Auto-paging for long reports
+            splitContent.forEach(line => {
+                if (y > 280) { doc.addPage(); y = 20; }
+                doc.text(line, 20, y);
+                y += 6;
+            });
+        
+            doc.save(`RTS_Audit_${address.slice(0, 8)}.pdf`);
+            log("<span class='green'>[FILE]</span> Comprehensive PDF Dossier Generated.");
+        }
 
     // --- Option 1: Functional Quick Static Scan ---
     async function runWorkerScan(address, type) {
