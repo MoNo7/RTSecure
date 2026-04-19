@@ -374,11 +374,13 @@
         
                 const data = await response.json();
                 const reportContent = data.report || "No analysis returned.";
+
+                const finalSource = data.sourceCode || pastedCode || "";
         
                 // --- NEW: Run the Visual Static Scan results in the terminal ---
                 // We use data.sourceCode if returned from worker, or the pasted code
                 const codeForStatic = data.sourceCode || pastedCode || "";
-                await executeSyntacticScan(target || "PastedCode", codeForStatic);
+//                await executeSyntacticScan(target || "PastedCode", codeForStatic);
         
                 if (type === 0) {
                     log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
@@ -577,7 +579,7 @@
             ["Access Control (SWC-115)", sl.txOrigin],
             ["Oracle Risk (SWC-120)", sl.weakPRNG],
             ["Logic DoS (SWC-128)", sl.dosLoop],
-            ["SWC-112: DelegateCall", sl.delegateCall]
+            ["DelegateCall (SWC-112)", sl.delegateCall]
         ];
 
         y = 70;
@@ -597,8 +599,6 @@
         doc.setTextColor(40, 40, 40);
         doc.setFontSize(9);
         doc.text(doc.splitTextToSize(content, 170), 20, y);
-    
-        doc.save(`RTS_Audit_${address.slice(0, 8)}.pdf`);
     
          // SECTION 3: GAS & OPTIMIZATION (COMMERCIAL VALUE)
             y += 15;
