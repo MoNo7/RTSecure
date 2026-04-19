@@ -184,6 +184,8 @@
                 <span></span>
                 <span>ETH: $2,355.81</span>
                 <span>LCAI: $0.005086</span>
+                <span></span>
+                <span id="userLcaiBalance" style="color:var(--accent-green); margin-left:15px; font-weight:bold; display:none;">0.00 LCAI</span>
             </div>
             <div id="walletDisplay" onclick="connectWallet()" style="font-size: 0.8rem; cursor:pointer; color:var(--accent-blue);">
                 [ CONNECT WALLET ]
@@ -231,6 +233,23 @@
     let activeSigner = null;
     let oracleContract = null;
 
+    async function updateLcaiBalance(userAddress) {
+        try {
+            const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const tokenContract = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, provider);
+            
+            const balance = await tokenContract.balanceOf(userAddress);
+            const formatted = ethers.formatUnits(balance, 18);
+            
+            const balanceEl = document.getElementById('userLcaiBalance');
+            balanceEl.innerText = `${parseFloat(formatted).toFixed(2)} LCAI`;
+            balanceEl.style.display = 'inline';
+        } catch (e) {
+            console.error("Balance fetch failed", e);
+        }
+    }
+
     // --- Wallet & Logging ---
     async function connectWallet() {
         if (!window.ethereum) return log("Please install MetaMask");
@@ -240,6 +259,7 @@
         
         // Update the UI
         const addr = accounts[0];
+        await updateLcaiBalance(addr); // Trigger the balance update
         document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
         log(`[AUTH] Wallet Linked: ${addr}`);
         setupEventListener();
@@ -286,6 +306,21 @@
         } catch (err) {
             log(`<span style='color:#ff4444'>[FATAL]</span> Protocol Error: ${err.message}`);
         }
+        if (type === 1) { // Deep Scan Selected
+        const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
+        const tokenContract = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, activeSigner);
+        const balance = await tokenContract.balanceOf(await activeSigner.getAddress());
+
+        if (balance < RTS_CONFIG.FEES.REDTEAM) {
+            log("<span style='color:orange'>[INSUFFICIENT FUNDS]</span> You need 500 LCAI for a Deep Scan.");
+            log("> Proceeding with free Syntactic Static Scan only...");
+            // Force type to 0 to skip Stage 2
+            await runFullAuditFlow(target, 0); 
+            return;
+        }
+    }
+    
+    await runFullAuditFlow(target, type);
     }
     // --- Tier 1: Syntactic Static Scan (Production) ---
     async function executeSyntacticScan(address, source) {
