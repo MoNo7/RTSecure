@@ -539,7 +539,7 @@
         doc.rect(0, 0, 210, 25, 'F');
 
         doc.setFillColor(91, 75, 255); // Primary Purple: #5B4BFF
-        doc.circle(20, 14.5, 6, 'F'); // X: 15, Y: 12.5 (centered vertically in 25px bar)
+        doc.circle(20, 12.5, 8, 'F'); // X: 15, Y: 12.5 (centered vertically in 25px bar)
         
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(12);
@@ -552,8 +552,8 @@
         // Metadata
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(9);
-        doc.text(`Target: ${address}`, 20, 31);
-        doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 37);
+        doc.text(`Target: ${address}`, 20, 30);
+        doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 35);
 
         const score = data.confidenceScore || 0;
         doc.setTextColor(score > 80 ? 63 : 200, 185, 80);
@@ -565,7 +565,7 @@
     
         // SECTION 1: VULNERABILITY MATRIX
         doc.setTextColor(88, 166, 255);
-        doc.setFontSize(12);
+        doc.setFontSize(14);
         doc.text("1. VULNERABILITY DISCOVERY MATRIX", 20, y);
         y += 10;
     
@@ -582,7 +582,7 @@
             doc.setFontSize(10);
             doc.setTextColor(check[1] ? 200 : 63, check[1] ? 50 : 150, 0);
             doc.text(`[${check[1] ? "DETECTED" : "PASSED"}] ${check[0]}`, 25, y);
-            y += 6;
+            y += 4;
             doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
             doc.text(`Metric: ${check[2]}`, 30, y);
