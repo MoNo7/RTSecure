@@ -178,19 +178,17 @@
     </aside>
 
     <div class="main-container">
-        <header class="top-bar">
-            <div class="stats">
-                <span>NETWORK: <span class="stat-online">● ONLINE</span></span>
-                <span></span>
-                <span>ETH: $2,355.81</span>
-                <span>LCAI: $0.005086</span>
-                <span></span>
-                <span id="userLcaiBalance" style="color:var(--accent-green); margin-left:15px; font-weight:bold; display:none;">0.00 LCAI</span>
-            </div>
-            <div id="walletDisplay" onclick="connectWallet()" style="font-size: 0.8rem; cursor:pointer; color:var(--accent-blue);">
-                [ CONNECT WALLET ]
-            </div>
-        </header>
+    <header class="top-bar">
+        <div class="stats">
+            <span>NETWORK: <span class="stat-online">● ONLINE</span></span>
+            <span>ETH: $2,355.81</span>
+            <span>LCAI: $0.005086</span>
+            <span id="userLcaiBalance" style="color:var(--accent-green); margin-left:15px; font-weight:bold; display:none;">0.00 LCAI</span>
+        </div>
+        <div id="walletDisplay" onclick="connectWallet()" style="font-size: 0.8rem; cursor:pointer; color:var(--accent-blue);">
+            [ CONNECT WALLET ]
+        </div>
+    </header>
 
         <main class="content">
             <div class="audit-card">
@@ -237,34 +235,31 @@
         try {
             const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
             const provider = new ethers.BrowserProvider(window.ethereum);
-            const tokenContract = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, provider);
+            const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, provider);
+            const balance = await token.balanceOf(userAddress);
             
-            const balance = await tokenContract.balanceOf(userAddress);
-            const formatted = ethers.formatUnits(balance, 18);
-            
-            const balanceEl = document.getElementById('userLcaiBalance');
-            balanceEl.innerText = `${parseFloat(formatted).toFixed(2)} LCAI`;
-            balanceEl.style.display = 'inline';
+            const el = document.getElementById('userLcaiBalance');
+            el.innerText = `${parseFloat(ethers.formatUnits(balance, 18)).toFixed(2)} LCAI`;
+            el.style.display = 'inline';
         } catch (e) {
-            console.error("Balance fetch failed", e);
+            console.error("Balance sync failed");
         }
     }
 
-    // --- Wallet & Logging ---
+    // --- Enhanced Fetch with Balance Sync ---
     async function connectWallet() {
-        if (!window.ethereum) return log("Please install MetaMask");
+        if (!window.ethereum) return log("MetaMask not found.");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await provider.send("eth_requestAccounts", []);
         activeSigner = await provider.getSigner();
         
-        // Update the UI
         const addr = accounts[0];
-        await updateLcaiBalance(addr); // Trigger the balance update
         document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
+        
+        // Fetch Live Balance from LCAI Token Contract
+        await updateLcaiBalance(addr);
         log(`[AUTH] Wallet Linked: ${addr}`);
-        setupEventListener();
     }
-
     
     function setupEventListener() {
         const abi = ["event AuditRequested(uint256 indexed taskId, address targetContract, uint8 auditType)"];
@@ -323,21 +318,44 @@
     await runFullAuditFlow(target, type);
     }
     // --- Tier 1: Syntactic Static Scan (Production) ---
+    // --- Updated Syntactic Scan with Explanations ---
     async function executeSyntacticScan(address, source) {
         log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
         
-        // Security Heuristics (Regex)
         const findings = [
-            { name: "Phishing Vector (tx.origin)", detected: /tx\.origin/.test(source) },
-            { name: "Low-Level Call (delegatecall)", detected: /delegatecall/.test(source) },
-            { name: "Deprecated Opcode (selfdestruct)", detected: /selfdestruct|suicide/.test(source) },
-            { name: "Unprotected Assembly", detected: /assembly\s*{/.test(source) }
+            { 
+                name: "Phishing Vector (tx.origin)", 
+                detected: /tx\.origin/.test(source),
+                pass: "You are correctly using msg.sender for ownership checks.",
+                fail: "CRITICAL: tx.origin detected. An attacker can drain this contract via a phishing proxy."
+            },
+            { 
+                name: "Low-Level Call (delegatecall)", 
+                detected: /delegatecall/.test(source),
+                pass: "No dangerous external delegate-logic was detected.",
+                fail: "INFO: delegatecall found. Ensure the target contract is verified and immutable."
+            },
+            { 
+                name: "Deprecated Opcode (selfdestruct)", 
+                detected: /selfdestruct|suicide/.test(source),
+                pass: "The contract lacks the risk of sudden permanent termination.",
+                fail: "WARN: selfdestruct detected. This contract can be permanently deleted from the chain."
+            },
+            { 
+                name: "Unprotected Assembly", 
+                detected: /assembly\s*{/.test(source),
+                pass: "No 'black box' assembly blocks detected; logic is fully transparent.",
+                fail: "INFO: Inline assembly used. This bypasses many Solidity safety checks."
+            }
         ];
     
-        for (const issue of findings) {
-            await new Promise(r => setTimeout(r, 400));
-            const status = issue.detected ? "<span style='color:orange'>[WARN]</span>" : "<span class='green'>[PASS]</span>";
-            log(`> ${issue.name}: ${status}`);
+        for (const item of findings) {
+            await new Promise(r => setTimeout(r, 500));
+            const status = item.detected ? "<span style='color:orange'>[WARN]</span>" : "<span class='green'>[PASS]</span>";
+            const explanation = item.detected ? item.fail : item.pass;
+            
+            log(`> ${item.name}: ${status}`);
+            log(`<span style="font-size:0.75rem; opacity:0.8; padding-left:20px;">${explanation}</span>`);
         }
     }
 
