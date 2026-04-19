@@ -563,6 +563,7 @@
         }
 
         // SECTION 1: DISCOVERY MATRIX
+        const score = data.confidenceScore || 0;
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(14);
         doc.text(`CONFIDENCE: ${data.confidenceScore || 0}%`, 20, 50);
