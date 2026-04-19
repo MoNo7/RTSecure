@@ -156,13 +156,14 @@
 <div id="adminPanel" style="display:none; position:fixed; top:70px; right:20px; width:300px; background:var(--bg-card); border:1px solid var(--accent-blue); border-radius:8px; padding:20px; z-index:1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
     <h3 style="margin-top:0; font-size:0.9rem; color:var(--accent-blue);">ADMIN ORACLE CONTROL</h3>
     <div style="font-size:0.8rem; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+        <label>Static Fee (LCAI):</label>
+        <input type="number" id="newStaticFee" placeholder="1" style="width:100%; margin:5px 0;">
+        <label>Deep Fee (LCAI):</label>
+        <input type="number" id="newDeepFee" placeholder="2" style="width:100%; margin:5px 0;">
+        <button onclick="updateOnChainFees()" style="width:100%; font-size:0.7rem; background:var(--accent-green); margin-top:5px;">UPDATE FEES</button>
         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span>Treasury Balance:</span>
             <span id="adminBalance" class="green">0.00 LCAI</span>
-        </div>
-        <div style="display:flex; justify-content:space-between;">
-            <span>Oracle Address:</span>
-            <span style="font-size:0.6rem; opacity:0.6;">0xf979...61c2</span>
         </div>
     </div>
     <button onclick="adminWithdraw()" style="width:100%; background:var(--accent-blue); font-size:0.7rem;">COLLECT REVENUE</button>
@@ -235,7 +236,7 @@
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
-        SECURITY_ORACLE: "0xf9799796e34EBadD44c7d6b4068F1d5aE19061c2",
+        SECURITY_ORACLE: "0xF57e74D3dEc214f400aAE1A5d1630f894D026d93",
         RPC: "https://light-testnet-rpc.lightchain.ai",
         FEES: {
             STATIC: ethers.parseEther("100"), // 100 LCAI
