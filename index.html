@@ -209,15 +209,6 @@
                     <button onclick="startAuditProtocol()" id="mainActionBtn">INITIATE SECURE SCAN</button>
                 </div>
             </div>
-                <h2>Request Security Audit</h2>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="targetAddr" placeholder="Contract Address (0x...)">
-                    <select id="scanSelect">
-                        <option value="0">Syntactic Static Scan - Standard Audit (100 LCAI)</option>
-                        <option value="1">Deep Semantic AIVM Scan - Red Team Audit (500 LCAI)</option>
-                    </select>
-                    <button onclick="startAuditProtocol()">INITIATE SECURE SCAN</button>
-                </div>
                 <div id="meterView" style="display:none; align-items:center; gap:10px; margin-bottom:20px;">
                     <span style="font-size:0.7rem; color:#8b949e;">THREAT LEVEL:</span>
                     <div style="width:100px; height:8px; background:#161b22; border-radius:4px; border:1px solid var(--border);">
