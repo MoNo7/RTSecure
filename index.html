@@ -192,6 +192,20 @@
 
         <main class="content">
             <div class="audit-card">
+                <div class="audit-card">
+                    <div style="margin-bottom:10px;">
+                        <button onclick="toggleInputMode('addr')" id="btnAddr" style="opacity:1">Address</button>
+                        <button onclick="toggleInputMode('code')" id="btnCode" style="opacity:0.5">Paste Code</button>
+                    </div>
+                    
+                    <input type="text" id="targetAddr" placeholder="Contract Address (0x...)">
+                    <textarea id="unverifiedCode" style="display:none; width:100%; height:150px; background:#010409; color:white; border:1px solid var(--border); border-radius:4px; margin-top:10px; font-family:inherit;" placeholder="Paste Solidity Source Code here..."></textarea>
+                    
+                    <div style="margin-top:10px;">
+                        <select id="scanSelect">...</select>
+                        <button onclick="startAuditProtocol()">INITIATE SECURE SCAN</button>
+                    </div>
+                </div>
                 <h2>Request Security Audit</h2>
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="targetAddr" placeholder="Contract Address (0x...)">
@@ -540,54 +554,58 @@
         const doc = new jsPDF();
         let y = 65;
     
-        // Header & Metadata
+        // Header & Badge
         doc.setFillColor(13, 17, 23);
         doc.rect(0, 0, 210, 40, 'F');
         doc.setTextColor(88, 166, 255);
         doc.setFontSize(22);
-        doc.text("RTSecure Conclusive Security Dossier", 20, 28);
+        doc.text("RTSecure Conclusive Dossier", 20, 28);
         
-        doc.setTextColor(150, 150, 150);
-        doc.setFontSize(9);
-        doc.text(`Target: ${address}`, 20, 48);
-        doc.text(`Engine: AIVM Neural-Llama-3-70B | Network: LCAI (504)`, 20, 53);
+        // --- PREMIUM FEATURE: INFERENCE BADGE ---
+        if (data.isVerified && data.confidenceScore > 90) {
+            doc.setDrawColor(63, 185, 80);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(140, 15, 55, 12, 2, 2, 'D');
+            doc.setTextColor(63, 185, 80);
+            doc.setFontSize(8);
+            doc.text("LCAI VERIFIED INFERENCE", 145, 23);
+        }
     
-        // VULNERABILITY DISCOVERY MATRIX
-        doc.setTextColor(63, 185, 80);
+        // --- CONFIDENCE SCORE & MANUAL REVIEW ---
+        doc.setTextColor(0, 0, 0);
         doc.setFontSize(14);
-        doc.text("VULNERABILITY DISCOVERY MATRIX", 20, y);
-        y += 12;
-    
-        const sa = data.staticAnalysis || {};
-        const sl = data.slitherAnalysis || {};
+        doc.text(`CONFIDENCE SCORE: ${data.confidenceScore}%`, 20, 50);
         
-        const matrixItems = [
-            { label: "Logical Reentrancy", val: sl.reentrancy },
-            { label: "Access Control Bypass", val: sa.txOrigin },
-            { label: "State Uninitialization", val: sl.uninitializedState },
-            { label: "Unprotected Delegatecall", val: sa.delegateCall }
+        if (data.manualReview) {
+            doc.setTextColor(200, 50, 0);
+            doc.setFontSize(10);
+            doc.text("⚠️ MANUAL REVIEW HIGHLY RECOMMENDED", 20, 56);
+        }
+    
+        // --- VULNERABILITY CHECKLIST MATRIX ---
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(12);
+        doc.text("DISCOVERY MATRIX (SWC MAPPING)", 20, y);
+        y += 10;
+    
+        const sl = data.slitherAnalysis || {};
+        const checks = [
+            ["SWC-107: Reentrancy", sl.reentrancy],
+            ["SWC-112: DelegateCall", sl.delegateCall],
+            ["SWC-120: Weak PRNG", sl.weakPRNG],
+            ["SWC-128: Gas DoS", sl.dosLoop]
         ];
     
-        matrixItems.forEach(item => {
-            doc.setFontSize(10);
-            doc.setTextColor(item.val ? 200 : 0, item.val ? 50 : 150, 0);
-            doc.text(`[${item.val ? "DETECTED" : "SECURE"}]`, 25, y);
-            doc.setTextColor(0,0,0);
-            doc.text(item.label, 55, y);
+        checks.forEach(check => {
+            doc.setTextColor(check[1] ? 200 : 63, check[1] ? 50 : 185, 0);
+            doc.text(`[${check[1] ? "DETECTED" : "PASSED"}]`, 25, y);
+            doc.setTextColor(0, 0, 0);
+            doc.text(check[0], 60, y);
             y += 7;
         });
     
-        // DEEP AUDIT CONTENT
-        y += 10;
-        doc.setTextColor(88, 166, 255);
-        doc.text("DEEP SEMANTIC FINDINGS", 20, y);
-        y += 10;
-        doc.setTextColor(40, 40, 40);
-        const splitText = doc.splitTextToSize(content, 170);
-        doc.text(splitText, 20, y);
-    
-        doc.save(`RTS_Dossier_${address.slice(0, 8)}.pdf`);
-        log("<span class='blue'>[FILE]</span> Dossier Downloaded.");
+        // ... Rest of AIVM content ...
+        doc.save(`RTS_Dossier_${address ? address.slice(0, 8) : "Manual"}.pdf`);
     }
 
     // --- Option 1: Functional Quick Static Scan ---
