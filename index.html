@@ -346,7 +346,8 @@
             const isPasteMode = document.getElementById('unverifiedCode').style.display === 'block';
         
             document.getElementById('term').innerHTML = ""; 
-            log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Code' : 'Verified Address'}...`);
+            // Use "On-Chain Scan" instead of "Verified" to stay accurate until verified
+            log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Scan' : 'On-Chain Address'}...`);
         
             try {
                 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
