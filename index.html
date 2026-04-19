@@ -535,25 +535,32 @@
         const doc = new jsPDF();
 
         // Header & Premium Badge
-        doc.setFillColor(13, 17, 23);
-        doc.rect(0, 0, 210, 25, 'F');
-        doc.setTextColor(88, 166, 255);
+        doc.setFillColor(20, 21, 44);
+        doc.rect(0, 0, 210, 30, 'F');
+
+        doc.setFillColor(91, 75, 255); // Primary Purple: #5B4BFF
+        doc.circle(20, 15, 7, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.text("L", 18, 17); // Symbol Placeholder
+        
         doc.setFontSize(22);
-        doc.text("MiMo RTSecured Audit", 15, 16);
+        doc.text("MiMo RTSecured Audit", 32, 17);
 
         // Metadata
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(9);
-        doc.text(`Target: ${address}`, 20, 30);
-        doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 40);
+        doc.text(`Target: ${address}`, 20, 42);
+        doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 47);
 
         const score = data.confidenceScore || 0;
         doc.setTextColor(score > 80 ? 63 : 200, 185, 80);
         doc.setFontSize(12);
-        doc.text(`SECURITY CONFIDENCE: ${score}%`, 20, 45);
+        doc.text(`SECURITY CONFIDENCE: ${score}%`, 20, 56);
         
 
-        y = 55;
+        y = 70;
     
         // SECTION 1: VULNERABILITY MATRIX
         doc.setTextColor(88, 166, 255);
@@ -638,6 +645,9 @@
             doc.setFontSize(8);
             doc.text("LCAI VERIFIED", 155, 20);
         }
+
+        const logoImg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; // Replace with real base64
+        doc.addImage(logoImg, 'PNG', 15, 10, 10, 10);
     
         // ... Rest of AIVM content ...
         doc.save(`RTS_Dossier_${address ? address.slice(0, 8) : "Manual"}.pdf`);
