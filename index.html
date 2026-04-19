@@ -344,8 +344,8 @@
             const type = parseInt(document.getElementById('scanSelect').value);
             const isPasteMode = document.getElementById('unverifiedCode').style.display === 'block';
         
-            const sourceToAnalyze = isPasteMode ? pastedCode : null;
-            log(`[SYS] Initiating ${isPasteMode ? 'Manual' : 'Verified'} Scan...`);
+            document.getElementById('term').innerHTML = ""; 
+            log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Code' : 'Verified Address'}...`);
         
             try {
                 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
@@ -353,7 +353,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         address: isPasteMode ? null : target,
-                        unverifiedCode: sourceToAnalyze,
+                        unverifiedCode: isPasteMode ? pastedCode : null,
                         scanType: type,
                         userAddress: "0x4d36b31d4bfb957a5d816b0f420a9e755efc6a2c"
                     })
@@ -365,11 +365,12 @@
                 
                 await executeSyntacticScan(target || "PastedCode", finalSource);
         
-                if (type === 0) {
-                    log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
-                    log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${reportContent.replace(/\n/g, '<br>')}</div>`);
+                if (type === 1) {
+                    // FIX: Pass data and source to the generator
+                    generateProfessionalPDF(target || "Pasted_Code", data.report, data, finalSource);
                 } else {
-                    generateProfessionalPDF(target || "Pasted_Code", reportContent, data, finalSource);
+                    log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
+                    log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${data.report}</div>`);
                 }
             } catch (e) {
                 log(`<span style='color:red'>[FAIL]</span> ${e.message}`);
@@ -544,14 +545,27 @@
         const score = data.confidenceScore || 0;
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(14);
-        doc.text(`CONFIDENCE: ${data.confidenceScore || 0}%`, 20, 50);
+        doc.text(`SECURITY CONFIDENCE: ${score}%`, 140, 25);
         
+        // Metadata
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(9);
+        doc.text(`Target: ${address}`, 20, 45);
+        doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 50);
+        y = 65;
+    
+        // SECTION 1: VULNERABILITY MATRIX
+        doc.setTextColor(88, 166, 255);
+        doc.setFontSize(14);
+        doc.text("1. VULNERABILITY DISCOVERY MATRIX", 20, y);
+        y += 10;
+    
         const sl = data.slitherAnalysis || {};
         const checks = [
-            ["Reentrancy (SWC-107)", sl.reentrancy],
-            ["Access Control (SWC-115)", sl.txOrigin],
-            ["Oracle Risk (SWC-120)", sl.weakPRNG],
-            ["Logic DoS (SWC-128)", sl.dosLoop],
+            ["Reentrancy (SWC-107)", sl.reentrancy, "Checks for state updates after external calls."],
+            ["Access Control (SWC-115)", sl.txOrigin, "Validates ownership is not reliant on tx.origin."],
+            ["Oracle Risk (SWC-120)", sl.weakPRNG, "Detects reliance on block.timestamp or weak entropy."],
+            ["Logic DoS (SWC-128)", sl.dosLoop, "Identifies gas-exhaustion loops in external calls."]
             ["DelegateCall (SWC-112)", sl.delegateCall]
         ];
 
@@ -560,6 +574,10 @@
             doc.setFontSize(10);
             doc.setTextColor(check[1] ? 200 : 63, check[1] ? 50 : 150, 0);
             doc.text(`[${check[1] ? "DETECTED" : "PASSED"}] ${check[0]}`, 25, y);
+            y += 6;
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Metric: ${check[2]}`, 30, y);
             y += 8;
         });
         
@@ -567,16 +585,18 @@
         y += 10;
         doc.setTextColor(88, 166, 255);
         doc.setFontSize(14);
-        doc.text("AIVM DEEP AUDIT FINDINGS", 20, y);
+        doc.text("2. AIVM RED TEAM FINDINGS", 20, y);
         y += 10;
         doc.setTextColor(40, 40, 40);
         doc.setFontSize(9);
-        doc.text(doc.splitTextToSize(content, 170), 20, y);
+        const splitContent = doc.splitTextToSize(content, 170);
+        doc.text(splitContent, 20, y);
+        y += (splitContent.length * 5) + 10;
     
          // SECTION 3: GAS & OPTIMIZATION (COMMERCIAL VALUE)
-            y += 15;
-            doc.setTextColor(255, 191, 0); 
-            doc.text("SECTION 3: GAS OPTIMIZATION & BEST PRACTICES", 20, y);
+        if (y > 240) { doc.addPage(); y = 30; }
+            doc.setTextColor(255, 191, 0);
+            doc.text("3. GAS & OPTIMIZATION BEST PRACTICES", 20, y);
             y += 10;
             doc.setTextColor(0, 0, 0);
         
@@ -585,30 +605,11 @@
                 { label: "External vs Public", val: sourceCode.includes("public") && !sourceCode.includes("external") },
                 { label: "Immutable States", val: !sourceCode.includes("immutable") && sourceCode.includes("constant") }
             ];
-    
         
-        if ((data.confidenceScore || 0) < 80) {
-            doc.setFontSize(12);
-            doc.setTextColor(200, 0, 0);
-            doc.text("!!! CRITICAL: MANUAL REVIEW RECOMMENDED !!!", 20, y + 10);
-        }
-    
-        // --- CONFIDENCE SCORE & MANUAL REVIEW ---
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(14);
-        doc.text(`CONFIDENCE SCORE: ${data.confidenceScore}%`, 20, 50);
-        
-        if (data.manualReview) {
-            doc.setTextColor(200, 50, 0);
-            doc.setFontSize(10);
-            doc.text("⚠️ MANUAL REVIEW HIGHLY RECOMMENDED", 20, 56);
-        }
-    
-        // --- VULNERABILITY CHECKLIST MATRIX ---
-        doc.setTextColor(100, 100, 100);
-        doc.setFontSize(12);
-        doc.text("DISCOVERY MATRIX (SWC MAPPING)", 20, y);
-        y += 10;
+            gasChecks.forEach(gc => {
+                doc.text(`> ${gc.label}: ${gc.val ? "OPTIMIZATION FOUND" : "N/A"}`, 25, y);
+                y += 7;
+            });
 
         // Premium Inference Badge
         if (data.isVerified && data.confidenceScore > 90) {
