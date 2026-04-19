@@ -201,6 +201,13 @@
                     </select>
                     <button onclick="startAuditProtocol()">INITIATE SECURE SCAN</button>
                 </div>
+                <div id="meterView" style="display:none; align-items:center; gap:10px; margin-bottom:20px;">
+                    <span style="font-size:0.7rem; color:#8b949e;">THREAT LEVEL:</span>
+                    <div style="width:100px; height:8px; background:#161b22; border-radius:4px; border:1px solid var(--border);">
+                        <div id="riskFill" style="height:100%; width:0%; background:var(--accent-green); transition:0.5s;"></div>
+                    </div>
+                    <span id="riskScoreLabel" style="font-size:0.75rem; font-weight:bold;">0% SAFE</span>
+                </div>
 
                 <div class="terminal" id="term">
                     <div class="log-entry"><span class="green">[SYS]</span> Initializing RTSecure AI Engine...</div>
@@ -230,26 +237,26 @@
 
     let activeSigner = null;
     let oracleContract = null;
-let currentRiskScore = 0;
+    let currentRiskScore = 0;
 
-    function updateRiskMeter(data) {
-        const container = document.getElementById('meterView');
+    function updateRiskMeter(secData) {
+        const meter = document.getElementById('meterView');
         const fill = document.getElementById('riskFill');
         const label = document.getElementById('riskScoreLabel');
-        
-        container.style.display = 'flex';
-        let riskScore = 0;
+                let riskScore = 0;
+        if (meter && fill && label) {
+            meter.style.display = 'flex';
+            container.style.display = 'flex';
     
-        // Scoring logic based on GoPlus result
-        if (data.is_honeypot === "1") riskScore += 50;
-        if (data.is_proxy === "1") riskScore += 20;
-        if (data.selfdestruct === "1") riskScore += 30;
-    
-        fill.style.width = `${riskScore}%`;
-        label.innerText = riskScore > 50 ? `${riskScore}% CRITICAL` : `${riskScore}% SAFE`;
-        fill.style.background = riskScore > 50 ? "#ff4444" : "var(--accent-green)";
+            // Scoring logic based on GoPlus result
+            if (secData.is_honeypot === "1") riskScore += 50;
+            if (secData.is_proxy === "1") riskScore += 20;
+            if (secData.selfdestruct === "1") riskScore += 30;
+        }
+            fill.style.width = `${riskScore}%`;
+            label.innerText = riskScore > 50 ? `${riskScore}% CRITICAL` : `${riskScore}% SAFE`;
+            fill.style.background = riskScore > 50 ? "#ff4444" : "var(--accent-green)";
     }   
-
 
     // --- Integrate into your Scan ---
     async function executeSyntacticScan(address, source) {
