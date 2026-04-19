@@ -375,14 +375,12 @@
     
             const data = await response.json();
 
-            const finalReport = data.report || data.message || "Audit finalized.";
-    
+            const finalReport = data.report || data.message || data.reportText || "Audit finalized.";
             // Trigger Risk Meter if backend sent GoPlus data
             if (data.externalSecurity) {
                 updateRiskMeter(data.externalSecurity);
             }
     
-            const finalReport = data.report || data.reportText || "Audit finalized.";
             log("<span class='green'>[COMPLETE]</span> Results received.");
             log(`<div style="color:#8b949e; border-left: 2px solid var(--accent-green); padding-left:10px;">${finalReport}</div>`);
     
