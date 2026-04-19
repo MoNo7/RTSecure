@@ -534,68 +534,89 @@
     }
     
     
-        function generateProfessionalPDF(address, content, data) {
+       function generateProfessionalPDF(address, aiContent, data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            let y = 60;
+            let y = 65;
         
-            // Header & Branding
-            doc.setFillColor(13, 17, 23); // Dark theme header
+            // Vulnerability Guidance Matrix
+            const registry = {
+                txOrigin: { id: "SWC-115", label: "Phishing via tx.origin", risk: "MEDIUM", fix: "Change tx.origin to msg.sender." },
+                delegateCall: { id: "SWC-112", label: "Delegatecall to Untrusted Callee", risk: "HIGH", fix: "Verify/Whitelist all target addresses." },
+                reentrancy: { id: "SWC-107", label: "Reentrancy Vulnerability", risk: "CRITICAL", fix: "Apply ReentrancyGuard and update state before calls." },
+                uninitializedState: { id: "SWC-101", label: "Integer/State Uninitialization", risk: "HIGH", fix: "Explicitly initialize all variables in constructor." },
+                floatingPragma: { id: "SWC-103", label: "Floating Pragma Directive", risk: "LOW", fix: "Lock pragma to a specific version (e.g., 0.8.26)." },
+                uncheckedLowLevel: { id: "SWC-104", label: "Unchecked Call Return Value", risk: "MEDIUM", fix: "Wrap all .call() in a require() statement." }
+            };
+        
+            // Header & Branding (Dark Theme)
+            doc.setFillColor(13, 17, 23);
             doc.rect(0, 0, 210, 40, 'F');
             doc.setTextColor(88, 166, 255);
             doc.setFontSize(22);
-            doc.text("RTSecure Deep Audit Report", 20, 28);
+            doc.text("RTSecure Conclusive Security Dossier", 20, 25);
             
-            // Metadata
-            doc.setTextColor(0, 0, 0);
+            doc.setTextColor(139, 148, 158);
             doc.setFontSize(10);
             doc.text(`Target: ${address}`, 20, 48);
-            doc.text(`Generated: ${new Date().toLocaleString()} | Network: Lightchain AI (504)`, 20, 54);
-            y = 65;
+            doc.text(`Network: Lightchain AI Testnet (504) | Engine: Neural-Llama-3-70B`, 20, 54);
         
-            // SECTION 1: STAGE 1 - STATIC ANALYSIS
-            doc.setTextColor(63, 185, 80); // Accent Green
+            // SECTION 1: DETAILED VULNERABILITY MATRIX
+            doc.setTextColor(63, 185, 80);
             doc.setFontSize(14);
-            doc.text("SECTION 1: STATIC & SLITHER ANALYSIS", 20, y);
+            doc.text("SECTION 1: AUTOMATED SECURITY MATRIX", 20, y);
             y += 10;
-            
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(10);
+        
             const sa = data.staticAnalysis || {};
             const sl = data.slitherAnalysis || {};
-            
-            const staticRows = [
-                `Phishing Vectors (tx.origin): ${sa.txOrigin ? "FAILED" : "PASSED"}`,
-                `Low-Level Calls (delegatecall): ${sa.delegateCall ? "RISK DETECTED" : "PASSED"}`,
-                `Reentrancy (Slither Mode): ${sl.reentrancy ? "VULNERABLE" : "SECURE"}`,
-                `Uninitialized Variables: ${sl.uninitializedState ? "WARNING" : "PASSED"}`
+            const allChecks = [
+                { key: 'txOrigin', val: sa.txOrigin },
+                { key: 'delegateCall', val: sa.delegateCall },
+                { key: 'reentrancy', val: sl.reentrancy },
+                { key: 'uninitializedState', val: sl.uninitializedState },
+                { key: 'floatingPragma', val: sl.floatingPragma },
+                { key: 'uncheckedLowLevel', val: sl.uncheckedLowLevel }
             ];
-
-            staticRows.forEach(row => {
-                doc.text(`> ${row}`, 25, y);
-                y += 7;
-            });
-            y += 10;
         
-            // SECTION 2: STAGE 2 - AIVM SEMANTIC ANALYSIS
-            doc.setTextColor(88, 166, 255); // Accent Blue
+            allChecks.forEach(check => {
+                const info = registry[check.key];
+                const status = check.val ? "FAIL" : "PASS";
+                
+                // Main Row
+                doc.setFontSize(11);
+                doc.setTextColor(check.val ? 219 : 63, check.val ? 76 : 185, check.val ? 75 : 80); // Red if fail, Green if pass
+                doc.text(`[${status}] ${info.id}: ${info.label}`, 25, y);
+                y += 6;
+        
+                if (check.val) {
+                    doc.setTextColor(100, 100, 100);
+                    doc.setFontSize(9);
+                    doc.text(`   Risk: ${info.risk} | Remediation: ${info.fix}`, 25, y);
+                    y += 8;
+                } else {
+                    y += 4;
+                }
+            });
+        
+            // SECTION 2: AIVM SEMANTIC ANALYSIS
+            y += 12;
+            if (y > 250) { doc.addPage(); y = 25; }
+            doc.setTextColor(88, 166, 255);
             doc.setFontSize(14);
-            doc.text("SECTION 2: AIVM DEEP SEMANTIC AUDIT", 20, y);
+            doc.text("SECTION 2: AIVM DEEP SEMANTIC ANALYSIS", 20, y);
             y += 10;
         
             doc.setTextColor(40, 40, 40);
             doc.setFontSize(10);
-            const splitContent = doc.splitTextToSize(content, 170);
-            
-            // Auto-paging for long reports
+            const splitContent = doc.splitTextToSize(aiContent, 170);
             splitContent.forEach(line => {
                 if (y > 280) { doc.addPage(); y = 20; }
                 doc.text(line, 20, y);
                 y += 6;
             });
         
-            doc.save(`RTS_Audit_${address.slice(0, 8)}.pdf`);
-            log("<span class='green'>[FILE]</span> Comprehensive PDF Dossier Generated.");
+            doc.save(`RTS_Dossier_${address.slice(0, 8)}.pdf`);
+            log("<span class='blue'>[FILE]</span> Comprehensive PDF Generated and Saved.");
         }
 
     // --- Option 1: Functional Quick Static Scan ---
