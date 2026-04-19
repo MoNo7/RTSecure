@@ -566,7 +566,7 @@
             ["Access Control (SWC-115)", sl.txOrigin, "Validates ownership is not reliant on tx.origin."],
             ["Oracle Risk (SWC-120)", sl.weakPRNG, "Detects reliance on block.timestamp or weak entropy."],
             ["Logic DoS (SWC-128)", sl.dosLoop, "Identifies gas-exhaustion loops in external calls."],
-            ["DelegateCall (SWC-112)", sl.delegateCall]
+            [ "DelegateCall (SWC-112)" , sl . delegateCall, "Checks for high-risk external logic delegation." ]
         ];
 
         y = 70;
@@ -607,8 +607,14 @@
             ];
         
             gasChecks.forEach(gc => {
-                doc.text(`> ${gc.label}: ${gc.val ? "OPTIMIZATION FOUND" : "N/A"}`, 25, y);
-                y += 7;
+                doc.text(`> ${gc.label}: ${gc.val ? "OPTIMIZATION FOUND" : "NOT APPLICABLE"}`, 25, y);
+                y += 6;
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Method: ${gc.desc}`, 30, y);
+                y += 8;
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
             });
 
         // Premium Inference Badge
