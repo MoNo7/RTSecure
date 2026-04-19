@@ -549,51 +549,83 @@
     }
     
     
-     function generateProfessionalPDF(address, content, data) {
+    function generateProfessionalPDF(address, content, data) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        let y = 65;
-    
-        // Header & Badge
+        let y = 60;
+
+        // Header & Premium Badge
         doc.setFillColor(13, 17, 23);
         doc.rect(0, 0, 210, 40, 'F');
         doc.setTextColor(88, 166, 255);
         doc.setFontSize(22);
         doc.text("RTSecure Conclusive Dossier", 20, 28);
         
-        // --- PREMIUM FEATURE: INFERENCE BADGE ---
+        // Premium Inference Badge
         if (data.isVerified && data.confidenceScore > 90) {
             doc.setDrawColor(63, 185, 80);
-            doc.setLineWidth(0.5);
-            doc.roundedRect(140, 15, 55, 12, 2, 2, 'D');
             doc.setTextColor(63, 185, 80);
+            doc.roundedRect(145, 15, 50, 10, 2, 2, 'D');
             doc.setFontSize(8);
-            doc.text("LCAI VERIFIED INFERENCE", 145, 23);
+            doc.text("LCAI VERIFIED", 155, 22);
         }
 
-         // SECTION 3: GAS & OPTIMIZATION (COMMERCIAL VALUE)
-    y += 15;
-    doc.setTextColor(255, 191, 0); // Amber
-    doc.text("SECTION 3: GAS OPTIMIZATION & BEST PRACTICES", 20, y);
-    y += 10;
-    doc.setTextColor(0, 0, 0);
+        // SECTION 1: DISCOVERY MATRIX
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(14);
+        doc.text(`CONFIDENCE: ${data.confidenceScore || 0}%`, 20, 50);
+        
+        const sl = data.slitherAnalysis || {};
+        const checks = [
+            ["Reentrancy (SWC-107)", sl.reentrancy],
+            ["Access Control (SWC-115)", sl.txOrigin],
+            ["Oracle Risk (SWC-120)", sl.weakPRNG],
+            ["Logic DoS (SWC-128)", sl.dosLoop]
+        ];
+
+        y = 70;
+        checks.forEach(check => {
+            doc.setFontSize(10);
+            doc.setTextColor(check[1] ? 200 : 63, check[1] ? 50 : 150, 0);
+            doc.text(`[${check[1] ? "DETECTED" : "PASSED"}] ${check[0]}`, 25, y);
+            y += 8;
+        });
+
+        // SECTION 2: VERBOSE AIVM RESULTS
+        y += 10;
+        doc.setTextColor(88, 166, 255);
+        doc.setFontSize(14);
+        doc.text("AIVM DEEP AUDIT FINDINGS", 20, y);
+        y += 10;
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(9);
+        doc.text(doc.splitTextToSize(content, 170), 20, y);
     
-    const gasChecks = [
-        { label: "Incremental Loops", val: sourceCode.includes("++i") },
-        { label: "External vs Public", val: sourceCode.includes("public") && !sourceCode.includes("external") },
-        { label: "Immutable States", val: !sourceCode.includes("immutable") && sourceCode.includes("constant") }
-    ];
-
-    gasChecks.forEach(gc => {
-        doc.text(`> ${gc.label}: ${gc.val ? "OPTIMIZATION FOUND" : "N/A"}`, 25, y);
-        y += 7;
-    });
-
-    if (confidenceScore < 80) {
-        doc.setFontSize(12);
-        doc.setTextColor(200, 0, 0);
-        doc.text("!!! CRITICAL: MANUAL REVIEW RECOMMENDED !!!", 20, y + 10);
-    }
+        doc.save(`RTS_Audit_${address.slice(0, 8)}.pdf`);
+    
+         // SECTION 3: GAS & OPTIMIZATION (COMMERCIAL VALUE)
+        y += 15;
+        doc.setTextColor(255, 191, 0); // Amber
+        doc.text("SECTION 3: GAS OPTIMIZATION & BEST PRACTICES", 20, y);
+        y += 10;
+        doc.setTextColor(0, 0, 0);
+        
+        const gasChecks = [
+            { label: "Incremental Loops", val: sourceCode.includes("++i") },
+            { label: "External vs Public", val: sourceCode.includes("public") && !sourceCode.includes("external") },
+            { label: "Immutable States", val: !sourceCode.includes("immutable") && sourceCode.includes("constant") }
+        ];
+    
+        gasChecks.forEach(gc => {
+            doc.text(`> ${gc.label}: ${gc.val ? "OPTIMIZATION FOUND" : "N/A"}`, 25, y);
+            y += 7;
+        });
+    
+        if (confidenceScore < 80) {
+            doc.setFontSize(12);
+            doc.setTextColor(200, 0, 0);
+            doc.text("!!! CRITICAL: MANUAL REVIEW RECOMMENDED !!!", 20, y + 10);
+        }
     
         // --- CONFIDENCE SCORE & MANUAL REVIEW ---
         doc.setTextColor(0, 0, 0);
