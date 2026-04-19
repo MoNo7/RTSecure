@@ -240,24 +240,24 @@
     let currentRiskScore = 0;
 
     function updateRiskMeter(secData) {
-        const meter = document.getElementById('meterView');
+        const meter = document.getElementById('meterView'); // Ensure this ID exists in HTML
         const fill = document.getElementById('riskFill');
         const label = document.getElementById('riskScoreLabel');
-                let riskScore = 0;
+        
+        // FIX: Check if 'meter' exists instead of 'container'
         if (meter && fill && label) {
             meter.style.display = 'flex';
-            container.style.display = 'flex';
+            
+            let score = 0;
+            if (secData.is_honeypot === "1") score += 60;
+            if (secData.is_proxy === "1") score += 20;
+            if (secData.selfdestruct === "1") score += 20;
     
-            // Scoring logic based on GoPlus result
-            if (secData.is_honeypot === "1") riskScore += 50;
-            if (secData.is_proxy === "1") riskScore += 20;
-            if (secData.selfdestruct === "1") riskScore += 30;
+            fill.style.width = `${score}%`;
+            fill.style.background = score > 50 ? "#ff4444" : "#3fb950";
+            label.innerText = score > 50 ? `${score}% THREAT` : `${score}% SAFE`;
         }
-            fill.style.width = `${riskScore}%`;
-            label.innerText = riskScore > 50 ? `${riskScore}% CRITICAL` : `${riskScore}% SAFE`;
-            fill.style.background = riskScore > 50 ? "#ff4444" : "var(--accent-green)";
-    }   
-
+    }
     // --- Integrate into your Scan ---
     async function executeSyntacticScan(address, source) {
         log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
