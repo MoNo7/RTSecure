@@ -321,16 +321,18 @@ let currentRiskScore = 0;
         const target = document.getElementById('targetAddr').value;
         const type = parseInt(document.getElementById('scanSelect').value);
     
-        if (!ethers.isAddress(target)) {
-            return log("<span style='color:red'>[ERR]</span> Please enter a valid contract address.");
+        if (!target || target.length < 42) {
+            return log("<span style='color:red'>[ERR]</span> Please enter a valid address.");
         }
     
-        if (!activeSigner) await connectWallet();
+        // --- STEP 1: RESTORE LOCAL STATIC SCAN ---
+        // We use an empty string for source here; in a real run, 
+        // you'd pull this from Remix or the LightScan API.
+        await executeSyntacticScan(target, ""); 
     
-        document.getElementById('term').innerHTML = "";
-        log("<span class='green'>[SYS]</span> Initializing RTSecure AI Engine...");
+        log(`[AIVM] Connecting to rtsecure-backend...`);
     
-          try {
+        try {
             const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -340,44 +342,21 @@ let currentRiskScore = 0;
                     userAddress: "0x4d36b31d4bfb957a5d816b0f420a9e755efc6a2c"
                 })
             });
-        
-            // Handle the "Unexpected End of JSON" by checking if response is OK
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-            
+    
             const data = await response.json();
-            
-            // 1. Update Risk Meter if data exists
+    
+            // Trigger Risk Meter if backend sent GoPlus data
             if (data.externalSecurity) {
                 updateRiskMeter(data.externalSecurity);
             }
-        
-            // 2. Display the AIVM Report
-            const finalReport = data.report || "Audit finalized with no critical findings.";
-            if (type === 0) {
-                log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
-                log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${String(finalReport).replace(/\n/g, '<br>')}</div>`);
-            } else {
-                generateProfessionalPDF(target, String(finalReport));
-            }
-        
-        } catch (e) {
-            log(`<span style='color:red'>[FAIL]</span> Connection to AIVM failed. Check Cloudflare Logs.`);
-        }
-        if (type === 1) { // Deep Scan Selected
-        const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-        const tokenContract = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, activeSigner);
-        const balance = await tokenContract.balanceOf(await activeSigner.getAddress());
-
-        if (balance < RTS_CONFIG.FEES.REDTEAM) {
-            log("<span style='color:orange'>[INSUFFICIENT FUNDS]</span> You need 500 LCAI for a Deep Scan.");
-            log("> Proceeding with free Syntactic Static Scan only...");
-            // Force type to 0 to skip Stage 2
-            await runFullAuditFlow(target, 0); 
-            return;
-        }
-    }
     
-    await runFullAuditFlow(target, type);
+            const finalReport = data.report || "No report generated.";
+            log("<span class='green'>[COMPLETE]</span> Results received.");
+            log(`<div style="color:#8b949e; border-left: 2px solid var(--accent-green); padding-left:10px;">${finalReport}</div>`);
+    
+        } catch (e) {
+            log(`<span style='color:red'>[FAIL]</span> Backend Error: ${e.message}`);
+        }
     }
     async function executeQuickApiCheck(address) {
         log("[SYS] Connecting to GoPlus Security API...");
