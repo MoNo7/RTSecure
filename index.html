@@ -345,25 +345,20 @@
         });
     }
 
-    // --- Main Audit Pipeline ---
-       async function startAuditProtocol() {
-            const target = document.getElementById('targetAddr').value;
-            const pastedCode = document.getElementById('unverifiedCode').value;
+        // --- Main Audit Pipeline ---
+        async function startAuditProtocol() {
+            const target = document.getElementById('targetAddr').value.trim();
+            const pastedCode = document.getElementById('unverifiedCode').value.trim();
             const type = parseInt(document.getElementById('scanSelect').value);
-            const isPasteMode = document.getElementById('unverifiedCode').style.display !== 'none';
-            // Check if we are in "Paste" mode or "Address" mode
-            const codeToSend = isPasteMode ? pastedCode : null;
-
-           
+            const isPasteMode = document.getElementById('unverifiedCode').style.display === 'block';
+        
+            const sourceToAnalyze = isPasteMode ? pastedCode : null;
         
             if (!isPasteMode && (!target || target.length < 42)) {
                 return log("<span style='color:red'>[ERR]</span> Valid Address Required.");
             }
-            if (isPasteMode && !pastedCode) {
-                return log("<span style='color:red'>[ERR]</span> Please paste code first.");
-            }
         
-            log(`[SYS] Initiating ${isPasteMode ? 'Unverified' : 'Verified'} Scan...`);
+            log(`[SYS] Initiating ${isPasteMode ? 'Manual' : 'Verified'} Scan...`);
         
             try {
                 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
@@ -371,7 +366,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         address: isPasteMode ? null : target,
-                        unverifiedCode: isPasteMode ? pastedCode : null,
+                        unverifiedCode: sourceToAnalyze,
                         scanType: type,
                         userAddress: "0x4d36b31d4bfb957a5d816b0f420a9e755efc6a2c"
                     })
@@ -379,18 +374,19 @@
         
                 const data = await response.json();
                 const reportContent = data.report || "No analysis returned.";
-                
+        
+                // --- NEW: Run the Visual Static Scan results in the terminal ---
+                // We use data.sourceCode if returned from worker, or the pasted code
+                const codeForStatic = data.sourceCode || pastedCode || "";
+                await executeSyntacticScan(target || "PastedCode", codeForStatic);
+        
                 if (type === 0) {
                     log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
                     log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${reportContent.replace(/\n/g, '<br>')}</div>`);
                 } else {
-                    if (data.report) {
-                        log("<span class='green'>[COMPLETE]</span> Analysis Finished.");
-                        generateProfessionalPDF(target || "PastedCode", data.report, data);
-                    }
-            // Correctly pass all 3 arguments to the PDF function
-//            generateProfessionalPDF(target || "Manual_Upload", reportContent, data);
-               }
+                    // FIX: Pass data.sourceCode to the PDF generator to avoid "sourceCode is not defined"
+                    generateProfessionalPDF(target || "PastedCode", reportContent, data, codeForStatic);
+                }
             } catch (e) {
                 log(`<span style='color:red'>[FAIL]</span> ${e.message}`);
             }
@@ -605,22 +601,17 @@
         doc.save(`RTS_Audit_${address.slice(0, 8)}.pdf`);
     
          // SECTION 3: GAS & OPTIMIZATION (COMMERCIAL VALUE)
-        y += 15;
-        doc.setTextColor(255, 191, 0); // Amber
-        doc.text("SECTION 3: GAS OPTIMIZATION & BEST PRACTICES", 20, y);
-        y += 10;
-        doc.setTextColor(0, 0, 0);
+            y += 15;
+            doc.setTextColor(255, 191, 0); 
+            doc.text("SECTION 3: GAS OPTIMIZATION & BEST PRACTICES", 20, y);
+            y += 10;
+            doc.setTextColor(0, 0, 0);
         
-        const gasChecks = [
-            { label: "Incremental Loops", val: sourceCode.includes("++i") },
-            { label: "External vs Public", val: sourceCode.includes("public") && !sourceCode.includes("external") },
-            { label: "Immutable States", val: !sourceCode.includes("immutable") && sourceCode.includes("constant") }
-        ];
-    
-        gasChecks.forEach(gc => {
-            doc.text(`> ${gc.label}: ${gc.val ? "OPTIMIZATION FOUND" : "N/A"}`, 25, y);
-            y += 7;
-        });
+            const gasChecks = [
+                { label: "Incremental Loops (++i)", val: sourceCode.includes("++i") },
+                { label: "External vs Public", val: sourceCode.includes("public") && !sourceCode.includes("external") },
+                { label: "Immutable States", val: !sourceCode.includes("immutable") && sourceCode.includes("constant") }
+            ];
     
         if (confidenceScore < 80) {
             doc.setFontSize(12);
