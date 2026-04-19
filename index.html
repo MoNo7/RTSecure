@@ -378,21 +378,19 @@
                 });
         
                 const data = await response.json();
-                // Crucial: define reportContent clearly to avoid "undefined" errors
                 const reportContent = data.report || "No analysis returned.";
                 
                 if (type === 0) {
-            log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
-            log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${reportContent.replace(/\n/g, '<br>')}</div>`);
-        } else {
-            if (data.report) {
-                log("<span class='green'>[COMPLETE]</span> Analysis Finished.");
-                if (type === 1) generateProfessionalPDF(target || "PastedCode", data.report, data);
-            }
+                    log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
+                    log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${reportContent.replace(/\n/g, '<br>')}</div>`);
+                } else {
+                    if (data.report) {
+                        log("<span class='green'>[COMPLETE]</span> Analysis Finished.");
+                        generateProfessionalPDF(target || "PastedCode", data.report, data);
+                    }
             // Correctly pass all 3 arguments to the PDF function
 //            generateProfessionalPDF(target || "Manual_Upload", reportContent, data);
-        }
-
+               }
             } catch (e) {
                 log(`<span style='color:red'>[FAIL]</span> ${e.message}`);
             }
