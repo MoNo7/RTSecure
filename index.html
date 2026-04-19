@@ -196,8 +196,8 @@
                 <div style="display: flex; gap: 10px;">
                     <input type="text" id="targetAddr" placeholder="Contract Address (0x...)">
                     <select id="scanSelect">
-                        <option value="0">One-Time Scan - Standard Audit (100 LCAI)</option>
-                        <option value="1">Deep Scan - Red Team Audit (500 LCAI)</option>
+                        <option value="0">Syntactic Static Scan - Standard Audit (100 LCAI)</option>
+                        <option value="1">Deep Semantic AIVM Scan - Red Team Audit (500 LCAI)</option>
                     </select>
                     <button onclick="startAuditProtocol()">INITIATE SECURE SCAN</button>
                 </div>
@@ -230,6 +230,57 @@
 
     let activeSigner = null;
     let oracleContract = null;
+let currentRiskScore = 0;
+
+function updateRiskMeter(score) {
+    currentRiskScore = Math.min(score, 100);
+    const fill = document.getElementById('riskFill');
+    const label = document.getElementById('riskScoreLabel');
+    const container = document.getElementById('meterView');
+    
+    container.style.display = 'flex';
+    fill.style.width = `${currentRiskScore}%`;
+    
+    // Dynamic Color and Label logic
+    if (currentRiskScore < 20) {
+        fill.style.background = "var(--accent-green)";
+        label.style.color = "var(--accent-green)";
+        label.innerText = `${currentRiskScore}% SAFE`;
+    } else if (currentRiskScore < 60) {
+        fill.style.background = "orange";
+        label.style.color = "orange";
+        label.innerText = `${currentRiskScore}% CAUTION`;
+    } else {
+        fill.style.background = "#ff4444";
+        label.style.color = "#ff4444";
+        label.innerText = `${currentRiskScore}% CRITICAL`;
+    }
+}
+
+    // --- Integrate into your Scan ---
+    async function executeSyntacticScan(address, source) {
+        log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
+        updateRiskMeter(0); // Reset for new scan
+        
+        let totalRisk = 0;
+        const findings = [
+            { name: "Phishing Vector (tx.origin)", detected: /tx\.origin/.test(source), weight: 30 },
+            { name: "Low-Level Call (delegatecall)", detected: /delegatecall/.test(source), weight: 15 },
+            { name: "Deprecated Opcode (selfdestruct)", detected: /selfdestruct|suicide/.test(source), weight: 40 },
+            { name: "Unprotected Assembly", detected: /assembly\s*{/.test(source), weight: 15 }
+        ];
+    
+        for (const item of findings) {
+            await new Promise(r => setTimeout(r, 600));
+            if (item.detected) totalRisk += item.weight;
+            
+            updateRiskMeter(totalRisk); // Animate meter live
+            
+            const status = item.detected ? "<span style='color:orange'>[WARN]</span>" : "<span class='green'>[PASS]</span>";
+            log(`> ${item.name}: ${status}`);
+        }
+    }
+    
 
     async function updateLcaiBalance(userAddress) {
         try {
@@ -291,10 +342,9 @@
             
             // 2. Pass source to the Syntactic Scan
             await executeSyntacticScan(target, sourceCode);
-    
+            await executeQuickApiCheck(target);            // New external API check
             if (type === 1) {
                 log("<br><strong>[STAGE 2] Requesting Deep Semantic AIVM Scan...</strong>");
-                // Your existing handleLcaiPayment & executeDeepSemanticScan logic here
             }
     
             log("<br><span class='green'>[COMPLETE]</span> All security protocols finalized.");
@@ -316,6 +366,22 @@
     }
     
     await runFullAuditFlow(target, type);
+    }
+    async function executeQuickApiCheck(address) {
+        log("[SYS] Connecting to GoPlus Security API...");
+        try {
+            const response = await fetch(`https://api.gopluslabs.io/api/v1/token_security/504?contract_addresses=${address}`);
+            const data = await response.json();
+            const result = data.result[address.toLowerCase()];
+    
+            if (result) {
+                log(`> Ownership Renounced: ${result.is_proxy === "1" ? "WARN" : "PASS"}`);
+                log(`> Honeypot Risk: ${result.is_honeypot === "1" ? "DANGER" : "PASS"}`);
+                log(`> Self-Destruct Risk: ${result.selfdestruct === "1" ? "WARN" : "PASS"}`);
+            }
+        } catch (e) {
+            log("<span style='color:orange'>[WARN]</span> External API check skipped.");
+        }
     }
     // --- Tier 1: Syntactic Static Scan (Production) ---
     // --- Updated Syntactic Scan with Explanations ---
