@@ -351,6 +351,8 @@
             });
     
             const data = await response.json();
+
+            const finalReport = data.report || data.message || "Audit finalized.";
     
             // Trigger Risk Meter if backend sent GoPlus data
             if (data.externalSecurity) {
