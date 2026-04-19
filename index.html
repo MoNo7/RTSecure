@@ -232,30 +232,24 @@
     let oracleContract = null;
 let currentRiskScore = 0;
 
-function updateRiskMeter(score) {
-    currentRiskScore = Math.min(score, 100);
-    const fill = document.getElementById('riskFill');
-    const label = document.getElementById('riskScoreLabel');
-    const container = document.getElementById('meterView');
+    function updateRiskMeter(data) {
+        const container = document.getElementById('meterView');
+        const fill = document.getElementById('riskFill');
+        const label = document.getElementById('riskScoreLabel');
+        
+        container.style.display = 'flex';
+        let riskScore = 0;
     
-    container.style.display = 'flex';
-    fill.style.width = `${currentRiskScore}%`;
+        // Scoring logic based on GoPlus result
+        if (data.is_honeypot === "1") riskScore += 50;
+        if (data.is_proxy === "1") riskScore += 20;
+        if (data.selfdestruct === "1") riskScore += 30;
     
-    // Dynamic Color and Label logic
-    if (currentRiskScore < 20) {
-        fill.style.background = "var(--accent-green)";
-        label.style.color = "var(--accent-green)";
-        label.innerText = `${currentRiskScore}% SAFE`;
-    } else if (currentRiskScore < 60) {
-        fill.style.background = "orange";
-        label.style.color = "orange";
-        label.innerText = `${currentRiskScore}% CAUTION`;
-    } else {
-        fill.style.background = "#ff4444";
-        label.style.color = "#ff4444";
-        label.innerText = `${currentRiskScore}% CRITICAL`;
-    }
-}
+        fill.style.width = `${riskScore}%`;
+        label.innerText = riskScore > 50 ? `${riskScore}% CRITICAL` : `${riskScore}% SAFE`;
+        fill.style.background = riskScore > 50 ? "#ff4444" : "var(--accent-green)";
+    }   
+
 
     // --- Integrate into your Scan ---
     async function executeSyntacticScan(address, source) {
