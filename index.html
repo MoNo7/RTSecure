@@ -352,67 +352,57 @@
     }
 
     // --- Main Audit Pipeline ---
-        async function startAuditProtocol() {
+       async function startAuditProtocol() {
             const target = document.getElementById('targetAddr').value;
+            const pastedCode = document.getElementById('unverifiedCode').value; // Get the text area content
             const type = parseInt(document.getElementById('scanSelect').value);
             
-            log(`[SYS] Requesting Syntactic Analysis for ${target.slice(0,8)}...`);
-            log("<strong>[STAGE 1] Syntactic & Slither Static Scan</strong>");
-            if (type === 1) {
-                log("<strong>[STAGE 2] AIVM Semantic Audit (Neural-Llama-3-70B)</strong>");
-                log(`> Uploading source code to Lightchain AI engine...`);
-                log(`> Analyzing logic pathways and cross-contract calls...`);
-            } else {
-                log(`[SYS] Requesting Syntactic Analysis for ${target.slice(0,8)}...`);
+            // Check if we are in "Paste" mode or "Address" mode
+            const isPasteMode = document.getElementById('unverifiedCode').style.display !== 'none';
+            const codeToSend = isPasteMode ? pastedCode : null;
+        
+            if (!isPasteMode && (!target || target.length < 42)) {
+                return log("<span style='color:red'>[ERR]</span> Valid Address Required.");
             }
+            if (isPasteMode && !pastedCode) {
+                return log("<span style='color:red'>[ERR]</span> Please paste code first.");
+            }
+        
+            log(`[SYS] Initiating ${isPasteMode ? 'Unverified' : 'Verified'} Scan...`);
         
             try {
                 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
-                method: "POST",
+                    method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        address: target,
+                    body: JSON.stringify({ 
+                        address: isPasteMode ? null : target, 
                         scanType: type,
+                        unverifiedCode: codeToSend, // Send the pasted code
                         userAddress: "0x4d36b31d4bfb957a5d816b0f420a9e755efc6a2c"
                     })
                 });
                 const data = await response.json();
-                const finalReport = data.report || "No report generated.";
-                const reportContent = data.report || "No analysis available.";
-
-                if (type === 0) {
-                    log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
-                    log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${finalReport.replace(/\n/g, '<br>')}</div>`);
-                } else {
-                    // FIX: Pass BOTH the text and the raw data object
-                    generateProfessionalPDF(target, reportContent, data);
-                }
-        
-                log("<strong>[STAGE 1] Syntactic Static Scan (Live)</strong>");
                 
-                if (data.isVerified) {
-                    const sa = data.staticAnalysis;
-                    const sl = data.slitherAnalysis; 
-                    if (sl) {
-                        // Real Pass/Fail based on the regex result
-                        log(`> Phishing Vector (tx.origin): ${sa.txOrigin ? "<span style='color:orange'>[FOUND]</span>" : "<span class='green'>[PASS]</span>"}`);
-                        log(`> Low-Level Call (delegatecall): ${sa.delegateCall ? "<span style='color:orange'>[FOUND]</span>" : "<span class='green'>[PASS]</span>"}`);
-                        log(`> Deprecated Opcode (selfdestruct): ${sa.selfDestruct ? "<span style='color:orange'>[FOUND]</span>" : "<span class='green'>[PASS]</span>"}`);
-                        log(`> Unprotected Assembly: ${sa.assembly ? "<span style='color:orange'>[FOUND]</span>" : "<span class='green'>[PASS]</span>"}`);
-                        
-                        // New Slither Detectors
-                        log(`> <span style='color:var(--accent-blue)'>[SLITHER]</span> Reentrancy: ${sl.reentrancy ? "<span style='color:red'>[VULNERABLE]</span>" : "<span class='green'>[SAFE]</span>"}`);
-                        log(`> <span style='color:var(--accent-blue)'>[SLITHER]</span> Uninitialized State: ${sl.uninitializedState ? "<span style='color:orange'>[WARN]</span>" : "<span class='green'>[PASS]</span>"}`);
-                        log(`> <span style='color:var(--accent-blue)'>[SLITHER]</span> Unchecked Calls: ${sl.uncheckedLowLevel ? "<span style='color:red'>[VULNERABLE]</span>" : "<span class='green'>[PASS]</span>"}`);
-                    }
-                } else {
-                    log("<span style='color:red'>[ERR]</span> Contract is unverified. Stage 1 aborted.");
+                // Handle results...
+                if (data.report) {
+                    log("<span class='green'>[COMPLETE]</span> Analysis Finished.");
+                    if (type === 1) generateProfessionalPDF(target || "PastedCode", data.report, data);
                 }
-        
-                log("<span class='green'>[COMPLETE]</span> Results received:");
-                log(`<div style="color:#8b949e; border-left: 2px solid var(--accent-green); padding-left:10px;">${data.report}</div>`);
             } catch (e) {
                 log(`<span style='color:red'>[FAIL]</span> ${e.message}`);
+            }
+        }
+        
+        // Add this to handle the buttons
+        function toggleInputMode(mode) {
+            const addrInput = document.getElementById('targetAddr');
+            const codeInput = document.getElementById('unverifiedCode');
+            if (mode === 'code') {
+                addrInput.style.display = 'none';
+                codeInput.style.display = 'block';
+            } else {
+                addrInput.style.display = 'block';
+                codeInput.style.display = 'none';
             }
         }
     
@@ -570,6 +560,30 @@
             doc.setFontSize(8);
             doc.text("LCAI VERIFIED INFERENCE", 145, 23);
         }
+
+         // SECTION 3: GAS & OPTIMIZATION (COMMERCIAL VALUE)
+    y += 15;
+    doc.setTextColor(255, 191, 0); // Amber
+    doc.text("SECTION 3: GAS OPTIMIZATION & BEST PRACTICES", 20, y);
+    y += 10;
+    doc.setTextColor(0, 0, 0);
+    
+    const gasChecks = [
+        { label: "Incremental Loops", val: sourceCode.includes("++i") },
+        { label: "External vs Public", val: sourceCode.includes("public") && !sourceCode.includes("external") },
+        { label: "Immutable States", val: !sourceCode.includes("immutable") && sourceCode.includes("constant") }
+    ];
+
+    gasChecks.forEach(gc => {
+        doc.text(`> ${gc.label}: ${gc.val ? "OPTIMIZATION FOUND" : "N/A"}`, 25, y);
+        y += 7;
+    });
+
+    if (confidenceScore < 80) {
+        doc.setFontSize(12);
+        doc.setTextColor(200, 0, 0);
+        doc.text("!!! CRITICAL: MANUAL REVIEW RECOMMENDED !!!", 20, y + 10);
+    }
     
         // --- CONFIDENCE SCORE & MANUAL REVIEW ---
         doc.setTextColor(0, 0, 0);
