@@ -370,9 +370,7 @@
                 const data = await response.json();
                 const reportContent = data.report || "No analysis returned.";
                 const finalSource = data.sourceCode || pastedCode || "";
-                const cScore = data.confidenceScore || 0; // Local variable to avoid global scope issues
-        
-                // FIX 1: Uncomment this to show Stage 1 results in the terminal window
+                
                 await executeSyntacticScan(target || "PastedCode", finalSource);
         
                 if (type === 0) {
@@ -544,22 +542,12 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         let y = 60;
-
         // Header & Premium Badge
         doc.setFillColor(13, 17, 23);
         doc.rect(0, 0, 210, 40, 'F');
         doc.setTextColor(88, 166, 255);
         doc.setFontSize(22);
         doc.text("RTSecure Conclusive Dossier", 20, 28);
-        
-        // Premium Inference Badge
-        if (data.isVerified && data.confidenceScore > 90) {
-            doc.setDrawColor(63, 185, 80);
-            doc.setTextColor(63, 185, 80);
-            doc.roundedRect(145, 15, 50, 10, 2, 2, 'D');
-            doc.setFontSize(8);
-            doc.text("LCAI VERIFIED", 155, 22);
-        }
 
         // SECTION 1: DISCOVERY MATRIX
         const score = data.confidenceScore || 0;
@@ -583,7 +571,7 @@
             doc.text(`[${check[1] ? "DETECTED" : "PASSED"}] ${check[0]}`, 25, y);
             y += 8;
         });
-
+        
         // SECTION 2: VERBOSE AIVM RESULTS
         y += 10;
         doc.setTextColor(88, 166, 255);
@@ -607,6 +595,7 @@
                 { label: "Immutable States", val: !sourceCode.includes("immutable") && sourceCode.includes("constant") }
             ];
     
+        
         if (confidenceScore < 80) {
             doc.setFontSize(12);
             doc.setTextColor(200, 0, 0);
@@ -629,6 +618,15 @@
         doc.setFontSize(12);
         doc.text("DISCOVERY MATRIX (SWC MAPPING)", 20, y);
         y += 10;
+
+        // Premium Inference Badge
+        if (data.isVerified && data.confidenceScore > 90) {
+            doc.setDrawColor(63, 185, 80);
+            doc.setTextColor(63, 185, 80);
+            doc.roundedRect(145, 15, 50, 10, 2, 2, 'D');
+            doc.setFontSize(8);
+            doc.text("LCAI VERIFIED", 155, 22);
+        }
     
         // ... Rest of AIVM content ...
         doc.save(`RTS_Dossier_${address ? address.slice(0, 8) : "Manual"}.pdf`);
