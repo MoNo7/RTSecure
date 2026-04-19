@@ -363,7 +363,7 @@
                     })
                 });
                 const data = await response.json();
-                const finalReport = data.report || "No report generated.";
+                const content = data.report || "No report generated.";
 
                 if (type === 0) {
                     log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
