@@ -363,14 +363,15 @@
                     })
                 });
                 const data = await response.json();
-                const content = data.report || "No report generated.";
+                const finalReport = data.report || "No report generated.";
+                const reportContent = data.report || "No analysis available.";
 
                 if (type === 0) {
                     log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
                     log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${finalReport.replace(/\n/g, '<br>')}</div>`);
                 } else {
                     // FIX: Pass BOTH the text and the raw data object
-                    generateProfessionalPDF(target, content, data);
+                    generateProfessionalPDF(target, reportContent, data);
                 }
         
                 log("<strong>[STAGE 1] Syntactic Static Scan (Live)</strong>");
