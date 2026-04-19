@@ -539,26 +539,26 @@
         doc.rect(0, 0, 210, 25, 'F');
 
         doc.setFillColor(91, 75, 255); // Primary Purple: #5B4BFF
-        doc.circle(15, 12.5, 6, 'F'); // X: 15, Y: 12.5 (centered vertically in 25px bar)
+        doc.circle(20, 12.5, 8, 'F'); // X: 15, Y: 12.5 (centered vertically in 25px bar)
         
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(10);
-        doc.text("L", 13.5, 14.5); // Symbol Placeholder
+        doc.setFontSize(12);
+        doc.text("L", 18, 14.5); // Symbol Placeholder
 
         doc.setTextColor(88, 166, 255);
-        doc.setFontSize(16);
-        doc.text("MiMo RTSecured Audit", 25, 16);
+        doc.setFontSize(18);
+        doc.text("MiMo RTSecured Audit", 32, 14.5);
 
         // Metadata
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(9);
-        doc.text(`Target: ${address}`, 20, 35);
-        doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 40);
+        doc.text(`Target: ${address}`, 20, 32);
+        doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 37);
 
         const score = data.confidenceScore || 0;
         doc.setTextColor(score > 80 ? 63 : 200, 185, 80);
         doc.setFontSize(12);
-        doc.text(`SECURITY CONFIDENCE: ${score}%`, 20, 50);
+        doc.text(`SECURITY CONFIDENCE: ${score}%`, 20, 48);
         
 
         y = 65;
@@ -593,6 +593,7 @@
          // SECTION 2: GAS & OPTIMIZATION (COMMERCIAL VALUE)
         if (y > 240) { doc.addPage(); y = 30; }
             doc.setTextColor(88, 166, 255);
+            doc.setFontSize(14); // Standardized
             doc.text("2. GAS & OPTIMIZATION BEST PRACTICES", 20, y);
             y += 10;
             doc.setTextColor(0, 0, 0);
@@ -627,7 +628,7 @@
                 y += 8;
             });
 
-                // SECTION 2: VERBOSE AIVM RESULTS
+                // SECTION 3: VERBOSE AIVM RESULTS
             y += 10;
             doc.setTextColor(88, 166, 255);
             doc.setFontSize(14);
