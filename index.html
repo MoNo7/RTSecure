@@ -306,24 +306,19 @@
     }
 
     // --- Enhanced Fetch with Balance Sync ---
+    // --- Enhanced Fetch with Balance Sync ---
     async function connectWallet() {
-        if (!window.ethereum) return log("<span style='color:red'>[ERR]</span> MetaMask not found.");
-        try {
-            // Updated for Ethers v6 compatibility
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const accounts = await provider.send("eth_requestAccounts", []);
-            activeSigner = await provider.getSigner();
-            
-            const addr = accounts[0];
-            document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
-            log(`[AUTH] Wallet Linked: ${addr}`);
-            
-            // Mocking balance sync for Dev Mode
-            log(`[SYS] Syncing LCAI Balance for ${addr.slice(0,6)}...`);
-        } catch (err) {
-            console.error(err);
-            log("<span style='color:red'>[ERR]</span> Connection failed. Check Console.");
-        }
+        if (!window.ethereum) return log("MetaMask not found.");
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        activeSigner = await provider.getSigner();
+
+        const addr = accounts[0];
+        document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
+
+        // Fetch Live Balance from LCAI Token Contract
+        await updateLcaiBalance(addr);
+        log(`[AUTH] Wallet Linked: ${addr}`);
     }
     
     function setupEventListener() {
