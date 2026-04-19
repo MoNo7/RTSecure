@@ -533,7 +533,7 @@
     function generateProfessionalPDF(address, content, data, sourceCode) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        let y = 60;
+
         // Header & Premium Badge
         doc.setFillColor(13, 17, 23);
         doc.rect(0, 0, 210, 40, 'F');
