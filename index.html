@@ -305,20 +305,35 @@
         }
     }
 
-    // --- Enhanced Fetch with Balance Sync ---
-    // --- Enhanced Fetch with Balance Sync ---
     async function connectWallet() {
-        if (!window.ethereum) return log("MetaMask not found.");
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        activeSigner = await provider.getSigner();
-
-        const addr = accounts[0];
-        document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
-
-        // Fetch Live Balance from LCAI Token Contract
-        await updateLcaiBalance(addr);
-        log(`[AUTH] Wallet Linked: ${addr}`);
+        if (!window.ethereum) return log("<span style='color:red'>[ERR]</span> MetaMask not found.");
+        
+        try {
+            // Correct Ethers v6 Provider setup
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            
+            // Request accounts
+            const accounts = await provider.send("eth_requestAccounts", []);
+            const addr = accounts[0];
+            
+            // Get Signer properly
+            activeSigner = await provider.getSigner();
+            
+            // Update UI
+            document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
+            document.getElementById('walletDisplay').style.color = "var(--accent-green)";
+            log(`[AUTH] Wallet Linked: ${addr}`);
+            
+            // Initialize Contract with Error Handling
+            try {
+                setupEventListener();
+            } catch (e) {
+                log("<span style='color:orange'>[WARN]</span> Oracle Events offline (Wrong Network?)");
+            }
+        } catch (err) {
+            log("<span style='color:red'>[ERR]</span> Connection failed. Check MetaMask.");
+            console.error(err);
+        }
     }
     
     function setupEventListener() {
@@ -367,7 +382,7 @@
                 updateRiskMeter(data.externalSecurity);
             }
     
-            const finalReport = data.report || "No report generated.";
+            const finalReport = data.report || data.reportText || "Audit finalized.";
             log("<span class='green'>[COMPLETE]</span> Results received.");
             log(`<div style="color:#8b949e; border-left: 2px solid var(--accent-green); padding-left:10px;">${finalReport}</div>`);
     
