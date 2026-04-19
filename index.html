@@ -539,20 +539,21 @@
         doc.rect(0, 0, 210, 40, 'F');
         doc.setTextColor(88, 166, 255);
         doc.setFontSize(22);
-        doc.text("RTSecure Conclusive Dossier", 20, 28);
+        doc.text("MiMo RTSecured Audit", 10, 18);
 
-        // SECTION 1: DISCOVERY MATRIX
-        const score = data.confidenceScore || 0;
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(14);
-        doc.text(`SECURITY CONFIDENCE: ${score}%`, 140, 25);
-        
         // Metadata
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(9);
         doc.text(`Target: ${address}`, 20, 45);
         doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 50);
-        y = 65;
+
+        const score = data.confidenceScore || 0;
+        doc.setTextColor(score > 80 ? 63 : 200, 185, 80);
+        doc.setFontSize(12);
+        doc.text(`SECURITY CONFIDENCE: ${score}%`, 20, 62);
+        
+
+        y = 75;
     
         // SECTION 1: VULNERABILITY MATRIX
         doc.setTextColor(88, 166, 255);
