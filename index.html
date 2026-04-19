@@ -343,6 +343,7 @@
             const type = parseInt(document.getElementById('scanSelect').value);
             
             log(`[SYS] Requesting Syntactic Analysis for ${target.slice(0,8)}...`);
+            log("<strong>[STAGE 1] Syntactic & Slither Static Scan</strong>");
         
             try {
                 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
@@ -355,11 +356,17 @@
                 
                 if (data.isVerified) {
                     const sa = data.staticAnalysis;
+                    const sl = data.slitherAnalysis; 
                     // Real Pass/Fail based on the regex result
                     log(`> Phishing Vector (tx.origin): ${sa.txOrigin ? "<span style='color:orange'>[FOUND]</span>" : "<span class='green'>[PASS]</span>"}`);
                     log(`> Low-Level Call (delegatecall): ${sa.delegateCall ? "<span style='color:orange'>[FOUND]</span>" : "<span class='green'>[PASS]</span>"}`);
                     log(`> Deprecated Opcode (selfdestruct): ${sa.selfDestruct ? "<span style='color:orange'>[FOUND]</span>" : "<span class='green'>[PASS]</span>"}`);
                     log(`> Unprotected Assembly: ${sa.assembly ? "<span style='color:orange'>[FOUND]</span>" : "<span class='green'>[PASS]</span>"}`);
+                    
+                    // New Slither Detectors
+                    log(`> <span style='color:var(--accent-blue)'>[SLITHER]</span> Reentrancy: ${sl.reentrancy ? "<span style='color:red'>[VULNERABLE]</span>" : "<span class='green'>[SAFE]</span>"}`);
+                    log(`> <span style='color:var(--accent-blue)'>[SLITHER]</span> Uninitialized State: ${sl.uninitializedState ? "<span style='color:orange'>[WARN]</span>" : "<span class='green'>[PASS]</span>"}`);
+                    log(`> <span style='color:var(--accent-blue)'>[SLITHER]</span> Unchecked Calls: ${sl.uncheckedLowLevel ? "<span style='color:red'>[VULNERABLE]</span>" : "<span class='green'>[PASS]</span>"}`);
                 } else {
                     log("<span style='color:red'>[ERR]</span> Contract is unverified. Stage 1 aborted.");
                 }
