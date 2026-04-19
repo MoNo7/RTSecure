@@ -581,6 +581,7 @@
             ["Access Control (SWC-115)", sl.txOrigin],
             ["Oracle Risk (SWC-120)", sl.weakPRNG],
             ["Logic DoS (SWC-128)", sl.dosLoop]
+            ["SWC-112: DelegateCall", sl.delegateCall],
         ];
 
         y = 70;
@@ -643,22 +644,6 @@
         doc.setFontSize(12);
         doc.text("DISCOVERY MATRIX (SWC MAPPING)", 20, y);
         y += 10;
-    
-        const sl = data.slitherAnalysis || {};
-        const checks = [
-            ["SWC-107: Reentrancy", sl.reentrancy],
-            ["SWC-112: DelegateCall", sl.delegateCall],
-            ["SWC-120: Weak PRNG", sl.weakPRNG],
-            ["SWC-128: Gas DoS", sl.dosLoop]
-        ];
-    
-        checks.forEach(check => {
-            doc.setTextColor(check[1] ? 200 : 63, check[1] ? 50 : 185, 0);
-            doc.text(`[${check[1] ? "DETECTED" : "PASSED"}]`, 25, y);
-            doc.setTextColor(0, 0, 0);
-            doc.text(check[0], 60, y);
-            y += 7;
-        });
     
         // ... Rest of AIVM content ...
         doc.save(`RTS_Dossier_${address ? address.slice(0, 8) : "Manual"}.pdf`);
