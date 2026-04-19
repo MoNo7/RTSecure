@@ -544,16 +544,16 @@
         // Metadata
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(9);
-        doc.text(`Target: ${address}`, 20, 35);
+        doc.text(`Target: ${address}`, 20, 30);
         doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 40);
 
         const score = data.confidenceScore || 0;
         doc.setTextColor(score > 80 ? 63 : 200, 185, 80);
         doc.setFontSize(12);
-        doc.text(`SECURITY CONFIDENCE: ${score}%`, 20, 50);
+        doc.text(`SECURITY CONFIDENCE: ${score}%`, 20, 45);
         
 
-        y = 65;
+        y = 55;
     
         // SECTION 1: VULNERABILITY MATRIX
         doc.setTextColor(88, 166, 255);
@@ -634,9 +634,9 @@
         if (data.isVerified && data.confidenceScore > 90) {
             doc.setDrawColor(63, 185, 80);
             doc.setTextColor(63, 185, 80);
-            doc.roundedRect(145, 15, 50, 10, 2, 2, 'D');
+            doc.roundedRect(145, 15, 35, 10, 2, 2, 'D');
             doc.setFontSize(8);
-            doc.text("LCAI VERIFIED", 155, 22);
+            doc.text("LCAI VERIFIED", 155, 20);
         }
     
         // ... Rest of AIVM content ...
