@@ -600,21 +600,34 @@
             y += 10;
             doc.setTextColor(0, 0, 0);
         
-            const gasChecks = [
-                { label: "Incremental Loops (++i)", val: sourceCode.includes("++i") },
-                { label: "External vs Public", val: sourceCode.includes("public") && !sourceCode.includes("external") },
-                { label: "Immutable States", val: !sourceCode.includes("immutable") && sourceCode.includes("constant") }
-            ];
+        const gasChecks = [
+            { 
+                label: "Incremental Loops (++i)", 
+                val: sourceCode.includes("++i"), 
+                desc: "Method: Pre-incrementing in loops saves ~5 gas per iteration." 
+            },
+            { 
+                label: "External Visibility", 
+                val: sourceCode.includes("public") && !sourceCode.includes("external"), 
+                desc: "Method: Using 'external' for uncalled functions reduces calldata overhead." 
+            },
+            { 
+                label: "Immutable States", 
+                val: sourceCode.includes("constant") && !sourceCode.includes("immutable"), 
+                desc: "Method: 'immutable' variables are stored in bytecode, not storage slots." 
+            }
+        ];
         
             gasChecks.forEach(gc => {
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
                 doc.text(`> ${gc.label}: ${gc.val ? "OPTIMIZATION FOUND" : "NOT APPLICABLE"}`, 25, y);
                 y += 6;
                 doc.setFontSize(8);
                 doc.setTextColor(100, 100, 100);
-                doc.text(`Method: ${gc.desc}`, 30, y);
+                // FIX: Reference the desc we just added
+                doc.text(gc.desc, 30, y); 
                 y += 8;
-                doc.setFontSize(10);
-                doc.setTextColor(0, 0, 0);
             });
 
         // Premium Inference Badge
