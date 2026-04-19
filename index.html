@@ -369,9 +369,8 @@
         
                 const data = await response.json();
                 const reportContent = data.report || "No analysis returned.";
-                
-                // Use the code returned from worker (verified) OR the pasted code
                 const finalSource = data.sourceCode || pastedCode || "";
+                const cScore = data.confidenceScore || 0; // Local variable to avoid global scope issues
         
                 // FIX 1: Uncomment this to show Stage 1 results in the terminal window
                 await executeSyntacticScan(target || "PastedCode", finalSource);
