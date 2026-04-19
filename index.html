@@ -355,11 +355,7 @@
             return log("<span style='color:red'>[ERR]</span> Please enter a valid address.");
         }
     
-        // --- STEP 1: RESTORE LOCAL STATIC SCAN ---
-        // We use an empty string for source here; in a real run, 
-        // you'd pull this from Remix or the LightScan API.
-        await executeSyntacticScan(target, ""); 
-    
+        log(`[SYS] Initializing Secure Scan for ${target.slice(0,8)}...`);
         log(`[AIVM] Connecting to rtsecure-backend...`);
     
         try {
@@ -375,14 +371,14 @@
     
             const data = await response.json();
 
-            const finalReport = data.report || data.message || data.reportText || "Audit finalized.";
-            // Trigger Risk Meter if backend sent GoPlus data
+  
             if (data.externalSecurity) {
                 updateRiskMeter(data.externalSecurity);
             }
-    
-            log("<span class='green'>[COMPLETE]</span> Results received.");
-            log(`<div style="color:#8b949e; border-left: 2px solid var(--accent-green); padding-left:10px;">${finalReport}</div>`);
+            const finalReport = data.report || data.message || data.reportText || "Audit finalized.";
+            
+        log("<span class='green'>[COMPLETE]</span> Results received:");
+        log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px; font-size:0.8rem;">${String(finalReport).replace(/\n/g, '<br>')}</div>`);
     
         } catch (e) {
             log(`<span style='color:red'>[FAIL]</span> Backend Error: ${e.message}`);
