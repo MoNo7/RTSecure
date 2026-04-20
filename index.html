@@ -244,7 +244,7 @@
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
-        SECURITY_ORACLE: "0x9Aa0a7DBaBFA8e39FE85d43152e1853CFA0915C9",
+        SECURITY_ORACLE: "0x4eCF80198A5C7a2C3A019cf8313d6f62C604F16D",
         RPC: "https://light-testnet-rpc.lightchain.ai",
         FEES: {
             STATIC: ethers.parseEther("100"), // 100 LCAI
@@ -799,24 +799,17 @@ async function adminWithdraw() {
 async function updateAdminStats() {
     if (!activeSigner) return;
     try {
-        const abi = [
-            "function balanceOf(address) view returns (uint256)",
-            "function owner() view returns (address)" // Public variables are getters in Ethers
-        ];
+        const abi = ["function balanceOf(address) view returns (uint256)", "function owner() view returns (address)"];
         const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
         const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
-        
+
         const b = await token.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
-        document.getElementById('adminBalance').innerText = `${parseFloat(ethers.formatEther(b)).toFixed(2)} LCAI`;
-        
-        // This will now successfully replace "Loading..."
+        document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
+
+        // This will successfully replace "Loading..."
         const currentOwner = await oracle.owner();
         document.getElementById('currentOwnerAddr').innerText = currentOwner;
-        document.getElementById('currentOwnerAddr').style.color = "var(--accent-blue)";
-    } catch (e) { 
-        console.error("Owner sync failed:", e);
-        document.getElementById('currentOwnerAddr').innerText = "Erro-r: Sync Failed";
-    }
+    } catch (e) { console.error(e); }
 }
     
     // Function to perform the transfer
