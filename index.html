@@ -780,25 +780,28 @@ async function updateAdminStats() {
     const ORACLE_ADDR = RTS_CONFIG.SECURITY_ORACLE;
     
     try {
-        const abi = ["function balanceOf(address) view returns (uint256)", "function owner() view returns (address)"];
-
-        const code = await activeSigner.provider.getCode(ORACLE_ADDR);
+        const abi = [
+            "function balanceOf(address) view returns (uint256)",
+            "function owner() view returns (address)"
+        ];
+        const code = await activeSigner.provider.getCode(RTS_CONFIG.SECURITY_ORACLE);
         if (code === "0x" || code === "0x0") {
             document.getElementById('currentOwnerAddr').innerText = "Wrong Contract Address";
             return;
         }
         
         const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
-        const oracle = new ethers.Contract(ORACLE_ADDR, abi, activeSigner);
-
+        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+        
         const b = await token.balanceOf(ORACLE_ADDR);
         document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
 
-        // This will successfully replace "Loading..."
         const owner = await oracle.owner();
         document.getElementById('currentOwnerAddr').innerText = owner;
         document.getElementById('currentOwnerAddr').style.color = "var(--accent-blue)";
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error("Sync Error:", e);
+    }
 }
     
     // Function to perform the transfer
