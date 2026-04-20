@@ -362,13 +362,18 @@
                 });
         
                 const data = await response.json();
+
+                // RELIABILITY FIX: Explicitly check verification status
+                const sourceStatus = data.isVerified ? "Verified Source" : "Unverified Bytecode";
+                log(`[INFO] Sourcing Logic: <span style="color:white; background:#333; padding:2px 5px;">${sourceStatus}</span>`);
+
+                
                 const reportContent = data.report || "No analysis returned.";
                 const finalSource = data.sourceCode || pastedCode || "";
                 
-                await executeSyntacticScan(target || "PastedCode", finalSource);
+                await executeSyntacticScan(target || "PastedCode", finalSource, data.isVerified);
         
                 if (type === 1) {
-                    // FIX: Pass data and source to the generator
                     generateProfessionalPDF(target || "Pasted_Code", data.report, data, finalSource);
                 } else {
                     log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
@@ -419,6 +424,9 @@
     // --- Updated Syntactic Scan with Explanations ---
     async function executeSyntacticScan(address, source) {
         log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
+
+        const isDecompiled = !isVerified && source.includes("DECOMPILED BYTECODE");
+        const isEmpty = !source || source.trim().length < 10;
         
         const findings = [
             { 
@@ -449,10 +457,24 @@
     
         for (const item of findings) {
             await new Promise(r => setTimeout(r, 500));
-            const status = item.detected ? "<span style='color:orange'>[WARN]</span>" : "<span class='green'>[PASS]</span>";
+    //        const status = item.detected ? "<span style='color:orange'>[WARN]</span>" : "<span class='green'>[PASS]</span>";
             const explanation = item.detected ? item.fail : item.pass;
+            let status;
+            let color;
+
+            if (item.detected) {
+                status = "[WARN]";
+                color = "orange";
+            } else if (isDecompiled || isEmpty) {
+                // RELIABILITY FIX: Don't give a Green PASS for unverified code
+                status = "[UNVERIFIED]";
+                color = "#8b949e"; 
+            } else {
+                status = "[PASS]";
+                color = "var(--accent-green)";
+            }
             
-            log(`> ${item.name}: ${status}`);
+            log(`> ${item.name}: <span style="color:${color}">${status}</span>`);
             log(`<span style="font-size:0.75rem; opacity:0.8; padding-left:20px;">${explanation}</span>`);
         }
     }
