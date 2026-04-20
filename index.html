@@ -266,21 +266,6 @@
         }
     }
     
-  
-    async function executeSyntacticScan(target) {
-        log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
-        const checks = [
-            "Phishing Vector (tx.origin)",
-            "Low-Level Call (delegatecall)",
-            "Deprecated Opcode (selfdestruct)",
-            "Unprotected Assembly"
-        ];
-        for (const check of checks) {
-            await new Promise(r => setTimeout(r, 300));
-            log(`> ${check}: <span class='green'>[PASS]</span>`);
-        }
-    }
-    
 
     async function updateLcaiBalance(userAddress) {
         try {
@@ -422,7 +407,7 @@
     }
     // --- Tier 1: Syntactic Static Scan (Production) ---
     // --- Updated Syntactic Scan with Explanations ---
-    async function executeSyntacticScan(address, source) {
+    async function executeSyntacticScan(address, source, isVerified) {
         log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
 
         const isDecompiled = !isVerified && source.includes("DECOMPILED BYTECODE");
