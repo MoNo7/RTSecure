@@ -163,18 +163,19 @@
         <input type="number" id="newDeepFee" placeholder="2" style="width:100%; margin:5px 0;">
         <button onclick="updateOnChainFees()" style="width:100%; font-size:0.7rem; background:var(--accent-green); margin-top:5px;">UPDATE FEES</button>
     </div>
+
     <div style="font-size:0.8rem; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
         <div style="color:#8b949e; font-size:0.7rem;">CURRENT OWNER:</div>
         <div id="currentOwnerAddr" style="font-size:0.6rem; word-break:break-all; color:var(--accent-blue); margin:5px 0;">Loading...</div>
         <input type="text" id="newOwnerInput" placeholder="New Owner (0x...)" style="width:100%; margin:5px 0;">
         <button onclick="adminTransferOwnership()" style="width:100%; font-size:0.7rem; background:#8250df;">TRANSFER OWNER</button>
     </div>
-    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-            <span>Treasury Balance:</span>
-            <span id="adminBalance" class="green">0.00 LCAI</span>
+
+    <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.8rem;">
+        <span>Treasury Balance:</span>
+        <span id="adminBalance" class="green">0.00 LCAI</span>
     </div>
     <button onclick="adminWithdraw()" style="width:100%; background:var(--accent-blue); font-size:0.7rem;">COLLECT REVENUE</button>
-    <div id="adminLog" style="font-size:0.6rem; margin-top:10px; color:#8b949e; max-height:60px; overflow-y:auto;"></div>
 </div>
     
 <div class="layout">
@@ -243,7 +244,7 @@
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
-        SECURITY_ORACLE: "0x41fD345bc5b7Ed8569847a07697593066c960Ddf",
+        SECURITY_ORACLE: "0xa68bF24A5db31d36C9d95a6CC9628230e0D7f67d",
         RPC: "https://light-testnet-rpc.lightchain.ai",
         FEES: {
             STATIC: ethers.parseEther("100"), // 100 LCAI
@@ -289,36 +290,15 @@
         }
     }
 
-    async function connectWallet() {
-        if (!window.ethereum) return log("<span style='color:red'>[ERR]</span> MetaMask not found.");
-        
-        try {
-            // Correct Ethers v6 Provider setup
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            
-            // Request accounts
-            const accounts = await provider.send("eth_requestAccounts", []);
-            const addr = accounts[0];
-            
-            // Get Signer properly
-            activeSigner = await provider.getSigner();
-            
-            // Update UI
-            document.getElementById('walletDisplay').innerText = `[ ${addr.slice(0,6)}...${addr.slice(-4)} ]`;
-            document.getElementById('walletDisplay').style.color = "var(--accent-green)";
-            log(`[AUTH] Wallet Linked: ${addr}`);
-            
-            // Initialize Contract with Error Handling
-            try {
-                setupEventListener();
-            } catch (e) {
-                log("<span style='color:orange'>[WARN]</span> Oracle Events offline (Wrong Network?)");
-            }
-        } catch (err) {
-            log("<span style='color:red'>[ERR]</span> Connection failed. Check MetaMask.");
-            console.error(err);
-        }
-    }
+async function connectWallet() {
+    if (!window.ethereum) return log("MetaMask not found.");
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const accounts = await provider.send("eth_requestAccounts", []);
+    activeSigner = await provider.getSigner();
+    document.getElementById('walletDisplay').innerText = `[ ${accounts[0].slice(0,6)}... ]`;
+    log(`[AUTH] Linked: ${accounts[0]}`);
+    updateAdminStats();
+}
     
     function setupEventListener() {
         const abi = ["event AuditRequested(uint256 indexed taskId, address targetContract, uint8 auditType)"];
@@ -752,105 +732,73 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
 };
 
 // --- Admin Functions ---
-    function toggleAdmin() {
-        const p = document.getElementById('adminPanel');
-        p.style.display = p.style.display === 'none' ? 'block' : 'none';
-        if(p.style.display === 'block') updateAdminStats();
-    }
+function toggleAdmin() { const p = document.getElementById('adminPanel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; }
 
-    async function updateAdminStats() {
-        const abi = ["function balanceOf(address) view returns (uint256)"];
-        const c = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
-        const b = await c.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
+async function updateAdminStats() {
+    if (!activeSigner) return;
+    try {
+        const abi = ["function balanceOf(address) view returns (uint256)", "function owner() view returns (address)"];
+        const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
+        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+        
+        const b = await token.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
         document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
-    }
-
-    async function adminWithdraw() {
-        const oracleAbi = ["function withdrawFees() external"];
-        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, oracleAbi, activeSigner);
-    
-        try {
-            log("[SYS] Sweeping revenue to owner wallet...");
-            const tx = await oracle.withdrawFees();
-            await tx.wait();
-            log("<span class='green'>[SUCCESS]</span> Revenue collected.");
-            // Make sure you have an updateAdminStats() or similar to refresh the UI balance
-            
-        } catch (e) {
-            // Parse the actual error message from ethers.js
-            const errorMsg = e.reason || e.message || "";
-    
-            if (errorMsg.includes("No revenue to collect")) {
-                log("<span style='color:orange'>[WARN]</span> Treasury is empty. No LCAI to collect.");
-            } else if (errorMsg.includes("Not owner")) {
-                log("<span style='color:red'>[ERR]</span> Access Denied: Only the contract owner can withdraw.");
-            } else {
-                log(`<span style='color:red'>[ERR]</span> Withdrawal failed: ${errorMsg}`);
-            }
-        }
-    }
-    async function updateAdminStats() {
-        if (!activeSigner) return;
-        try {
-           const abi = [
-                    "function balanceOf(address) view returns (uint256)",
-                    "function owner() view returns (address)" 
-                ];
-                const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
-                const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
         
-                const b = await token.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
-                document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
-        
-                // This call was failing because of the previous contract logic
-                const currentOwner = await oracle.owner();
-                document.getElementById('currentOwnerAddr').innerText = currentOwner;
-                document.getElementById('currentOwnerAddr').style.color = "var(--accent-green)";
-            } catch (e) {
-                console.error("Admin stats failed:", e);
-                document.getElementById('currentOwnerAddr').innerText = "Error Syncing Owner";
-            }
+        const owner = await oracle.owner();
+        document.getElementById('currentOwnerAddr').innerText = owner;
+    } catch (e) { console.error(e); }
+}
 
-    }
+async function adminWithdraw() {
+    const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, ["function withdrawFees() external"], activeSigner);
+    try {
+        log("[SYS] Withdrawing revenue...");
+        const tx = await oracle.withdrawFees();
+        await tx.wait();
+        log("<span class='green'>[OK]</span> Revenue collected.");
+        updateAdminStats();
+    } catch (e) { log("<span style='color:red'>[ERR]</span> Reverted. Treasury empty or Not Owner."); }
+}
+    
+async function updateAdminStats() {
+    if (!activeSigner) return;
+    try {
+        const abi = ["function balanceOf(address) view returns (uint256)", "function owner() view returns (address)"];
+        const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
+        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+        
+        const b = await token.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
+        document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
+        
+        const owner = await oracle.owner();
+        document.getElementById('currentOwnerAddr').innerText = owner;
+    } catch (e) { console.error(e); }
+}
     
     // Function to perform the transfer
-    async function adminTransferOwnership() {
-        const newOwner = document.getElementById('newOwnerInput').value.trim();
-        const abi = ["function transferOwnership(address) external"];
-        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
-    
-        try {
-            log(`[SYS] Transferring ownership to ${newOwner}...`);
-            const tx = await oracle.transferOwnership(newOwner);
-            await tx.wait();
-            log("<span class='green'>[OK]</span> Ownership transferred.");
-            updateAdminStats();
-        } catch (e) {
-            log("<span style='color:red'>[ERR]</span> Transfer failed: " + (e.reason || "Access Denied"));
-        }
-    }
+async function adminTransferOwnership() {
+    const newOwner = document.getElementById('newOwnerInput').value;
+    const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, ["function transferOwnership(address) external"], activeSigner);
+    try {
+        const tx = await oracle.transferOwnership(newOwner);
+        await tx.wait();
+        log("<span class='green'>[OK]</span> Ownership transferred.");
+        updateAdminStats();
+    } catch (e) { log("<span style='color:red'>[ERR]</span> Transfer failed."); }
+}
 
-    async function updateOnChainFees() {
-        const s = document.getElementById('newStaticFee').value;
-        const d = document.getElementById('newDeepFee').value;
-        const abi = ["function updateFees(uint256, uint256) external"];
-        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
-    
-        try {
-            log("[SYS] Updating fees on-chain...");
-            const tx = await oracle.updateFees(ethers.parseEther(s), ethers.parseEther(d));
-            await tx.wait();
-            log("<span class='green'>[OK]</span> Fees updated successfully.");
-        } catch (e) {
-            log("<span style='color:red'>[ERR]</span> Update failed: " + (e.reason || "Not Owner"));
-        }
-    }
+async function updateOnChainFees() {
+    const s = ethers.parseEther(document.getElementById('newStaticFee').value || "1");
+    const d = ethers.parseEther(document.getElementById('newDeepFee').value || "2");
+    const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, ["function updateFees(uint256,uint256) external"], activeSigner);
+    try {
+        const tx = await oracle.updateFees(s, d);
+        await tx.wait();
+        log("<span class='green'>[OK]</span> Fees updated.");
+    } catch (e) { log("<span style='color:red'>[ERR]</span> Update failed."); }
+}
 
-    function log(m) {
-        const t = document.getElementById('term');
-        t.innerHTML += `<div class='log-entry'>${m}</div>`;
-        t.scrollTop = t.scrollHeight;
-    }
+function log(m) { const t = document.getElementById('term'); t.innerHTML += `<div class='log-entry'>${m}</div>`; t.scrollTop = t.scrollHeight; }
     
 </script>
 </body>
