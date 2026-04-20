@@ -798,8 +798,7 @@ async function adminWithdraw() {
     
 async function updateAdminStats() {
     if (!activeSigner) return;
-
-    const ORACLE_ADDR = "0x4eCF80198A5C7a2C3A019cf8313d6f62C604F16D";
+    const ORACLE_ADDR = RTS_CONFIG.SECURITY_ORACLE;
     
     try {
         const abi = ["function balanceOf(address) view returns (uint256)", "function owner() view returns (address)"];
