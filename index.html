@@ -172,7 +172,6 @@
     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span>Treasury Balance:</span>
             <span id="adminBalance" class="green">0.00 LCAI</span>
-        </div>
     </div>
     <button onclick="adminWithdraw()" style="width:100%; background:var(--accent-blue); font-size:0.7rem;">COLLECT REVENUE</button>
     <div id="adminLog" style="font-size:0.6rem; margin-top:10px; color:#8b949e; max-height:60px; overflow-y:auto;"></div>
@@ -743,7 +742,7 @@
 
 
 
-    document.querySelector('button').onclick = startAuditProtocol;
+    // document.querySelector('button').onclick = startAuditProtocol;
     // Toggle Admin Panel (Triggered by clicking the "Online" status)
 document.querySelector('.stat-online').parentElement.style.cursor = "pointer";
 document.querySelector('.stat-online').parentElement.onclick = async () => {
@@ -791,20 +790,26 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
         }
     }
     async function updateAdminStats() {
-        const abi = [
-            "function balanceOf(address) view returns (uint256)",
-            "function owner() view returns (address)"
-        ];
-        const c = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
-        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
-    
-        // Fetch Token Balance
-        const b = await c.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
-        document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
-    
-        // Fetch Current Owner
-        const currentOwner = await oracle.owner();
-        document.getElementById('currentOwnerAddr').innerText = currentOwner;
+        if (!activeSigner) return;
+        try {
+            const abi = [
+                "function balanceOf(address) view returns (uint256)",
+                "function owner() view returns (address)"
+            ];
+            const c = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
+            const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+        
+            // Fetch Token Balance
+            const b = await c.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
+            document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
+        
+            // Fetch Current Owner
+            const currentOwner = await oracle.owner();
+            document.getElementById('currentOwnerAddr').innerText = currentOwner;
+        } catch (e) {
+        console.error("Admin stats failed:", e);
+        }
+
     }
     
     // Function to perform the transfer
