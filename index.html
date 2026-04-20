@@ -763,28 +763,7 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
 // --- Admin Functions ---
 function toggleAdmin() { const p = document.getElementById('adminPanel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; }
 
-async function updateAdminStats() {
-    if (!activeSigner) return;
-    try {
-        const abi = [
-            "function balanceOf(address) view returns (uint256)",
-            "function owner() view returns (address)"
-        ];
-        const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
-        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
-        
-        const b = await token.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
-        document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
-        
-        // This will now work because of the 'public' keyword in Solidity
-        const owner = await oracle.owner();
-        document.getElementById('currentOwnerAddr').innerText = owner;
-        document.getElementById('currentOwnerAddr').style.color = "var(--accent-blue)";
-    } catch (e) { 
-        console.error(e); 
-        document.getElementById('currentOwnerAddr').innerText = "Sync Error";
-    }
-}
+
 async function adminWithdraw() {
     const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, ["function withdrawFees() external"], activeSigner);
     try {
