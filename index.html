@@ -244,7 +244,7 @@
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
-        SECURITY_ORACLE: "0xa68bF24A5db31d36C9d95a6CC9628230e0D7f67d",
+        SECURITY_ORACLE: "0xafCFb250d23d0960e5A6Ca83e189d97ba110695b",
         RPC: "https://light-testnet-rpc.lightchain.ai",
         FEES: {
             STATIC: ethers.parseEther("100"), // 100 LCAI
@@ -313,9 +313,9 @@ async function connectWallet() {
         // --- Main Audit Pipeline ---
         async function startAuditProtocol() {
             log("[SYS] Scan initiated...");
-           const target = document.getElementById('targetAddr').value.trim();
-            const pastedCode = document.getElementById('unverifiedCode').value.trim();
+            const target = document.getElementById('targetAddr').value.trim();
             const type = parseInt(document.getElementById('scanSelect').value);
+            const pastedCode = document.getElementById('unverifiedCode').value.trim();
             const isPasteMode = document.getElementById('unverifiedCode').style.display === 'block';
         
             document.getElementById('term').innerHTML = ""; 
@@ -324,6 +324,10 @@ async function connectWallet() {
         if (!activeSigner) return log("<span style='color:red'>[ERR]</span> Connect wallet first.");
 
     try {
+        const abi = ["function approve(address, uint256) public returns (bool)", "function requestAudit(address, uint8) external"];
+        const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
+        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+        
         const oracleAbi = [
             "function staticFee() view returns (uint256)",
             "function deepFee() view returns (uint256)",
@@ -331,25 +335,20 @@ async function connectWallet() {
         ];
         const tokenAbi = ["function approve(address, uint256) public returns (bool)"];
         
-        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, oracleAbi, activeSigner);
-        const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, activeSigner);
-
         // Fetch actual fees from contract
-        const fee = type === 0 ? await oracle.staticFee() : await oracle.deepFee();
+        const fee = type === 0 ? ethers.parseEther("1") : ethers.parseEther("2");
+        log(`[PAYMENT] Approving ${ethers.formatEther(fee)} LCAI...`);
         
-        log(`[PAYMENT] Authorizing ${ethers.formatEther(fee)} LCAI for audit...`);
-        
-        // 1. APPROVE
         const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
         await appTx.wait();
         
         // 2. CHARGE (This is the revenue collection step)
-        log("[PAYMENT] Executing transaction...");
+        log("[PAYMENT] Confirming Secure Audit Fee...");
         const payTx = await oracle.requestAudit(target || ethers.ZeroAddress, type);
         await payTx.wait();
 
-        log("<span class='green'>[PAID]</span> Revenue secured. Starting AIVM Inference...");
-            try {
+        log("<span class='green'>[PAID]</span> Revenue collected. Launching AI Audit...");
+        try {
                 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -396,7 +395,7 @@ async function connectWallet() {
                 log(`<span style='color:red'>[FAIL]</span> ${e.message}`);
             }
         } catch (e) {
-        log(`<span style='color:red'>[FAIL]</span> Payment failed: ${e.message}`);
+        log(`<span style='color:red'>[FAIL]</span> Transaction reverted: ${e.reason || e.message}`);
     }
         }
         
@@ -801,16 +800,24 @@ async function adminWithdraw() {
 async function updateAdminStats() {
     if (!activeSigner) return;
     try {
-        const abi = ["function balanceOf(address) view returns (uint256)", "function owner() view returns (address)"];
+        const abi = [
+            "function balanceOf(address) view returns (uint256)",
+            "function owner() view returns (address)" // Public variables are getters in Ethers
+        ];
         const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
         const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
         
         const b = await token.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
-        document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
+        document.getElementById('adminBalance').innerText = `${parseFloat(ethers.formatEther(b)).toFixed(2)} LCAI`;
         
-        const owner = await oracle.owner();
-        document.getElementById('currentOwnerAddr').innerText = owner;
-    } catch (e) { console.error(e); }
+        // This will now successfully replace "Loading..."
+        const currentOwner = await oracle.owner();
+        document.getElementById('currentOwnerAddr').innerText = currentOwner;
+        document.getElementById('currentOwnerAddr').style.color = "var(--accent-blue)";
+    } catch (e) { 
+        console.error("Owner sync failed:", e);
+        document.getElementById('currentOwnerAddr').innerText = "Error: Sync Failed";
+    }
 }
     
     // Function to perform the transfer
