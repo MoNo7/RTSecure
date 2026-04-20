@@ -244,7 +244,7 @@
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
-        SECURITY_ORACLE: "0xafCFb250d23d0960e5A6Ca83e189d97ba110695b",
+        SECURITY_ORACLE: "0x9Aa0a7DBaBFA8e39FE85d43152e1853CFA0915C9",
         RPC: "https://light-testnet-rpc.lightchain.ai",
         FEES: {
             STATIC: ethers.parseEther("100"), // 100 LCAI
@@ -337,8 +337,7 @@ async function connectWallet() {
         
         // Fetch actual fees from contract
         const fee = type === 0 ? ethers.parseEther("1") : ethers.parseEther("2");
-        log(`[PAYMENT] Approving ${ethers.formatEther(fee)} LCAI...`);
-        
+        log(`[PAYMENT] Step 1: Approving ${ethers.formatEther(fee)} LCAI...`);
         const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
         await appTx.wait();
         
