@@ -155,13 +155,21 @@
 <body>
 <div id="adminPanel" style="display:none; position:fixed; top:70px; right:20px; width:300px; background:var(--bg-card); border:1px solid var(--accent-blue); border-radius:8px; padding:20px; z-index:1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
     <h3 style="margin-top:0; font-size:0.9rem; color:var(--accent-blue);">ADMIN ORACLE CONTROL</h3>
+    
     <div style="font-size:0.8rem; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
         <label>Static Fee (LCAI):</label>
         <input type="number" id="newStaticFee" placeholder="1" style="width:100%; margin:5px 0;">
         <label>Deep Fee (LCAI):</label>
         <input type="number" id="newDeepFee" placeholder="2" style="width:100%; margin:5px 0;">
         <button onclick="updateOnChainFees()" style="width:100%; font-size:0.7rem; background:var(--accent-green); margin-top:5px;">UPDATE FEES</button>
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+    </div>
+    <div style="font-size:0.8rem; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+        <div style="color:#8b949e; font-size:0.7rem;">CURRENT OWNER:</div>
+        <div id="currentOwnerAddr" style="font-size:0.6rem; word-break:break-all; color:var(--accent-blue); margin:5px 0;">Loading...</div>
+        <input type="text" id="newOwnerInput" placeholder="New Owner (0x...)" style="width:100%; margin:5px 0;">
+        <button onclick="adminTransferOwnership()" style="width:100%; font-size:0.7rem; background:#8250df;">TRANSFER OWNER</button>
+    </div>
+    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <span>Treasury Balance:</span>
             <span id="adminBalance" class="green">0.00 LCAI</span>
         </div>
@@ -802,8 +810,6 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
     // Function to perform the transfer
     async function adminTransferOwnership() {
         const newOwner = document.getElementById('newOwnerInput').value.trim();
-        if (!ethers.isAddress(newOwner)) return log("<span style='color:red'>[ERR]</span> Invalid Address.");
-    
         const abi = ["function transferOwnership(address) external"];
         const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
     
@@ -811,10 +817,26 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
             log(`[SYS] Transferring ownership to ${newOwner}...`);
             const tx = await oracle.transferOwnership(newOwner);
             await tx.wait();
-            log("<span class='green'>[SUCCESS]</span> Ownership transferred.");
+            log("<span class='green'>[OK]</span> Ownership transferred.");
             updateAdminStats();
         } catch (e) {
-            log(`<span style='color:red'>[ERR]</span> Transfer failed: ${e.reason || e.message}`);
+            log("<span style='color:red'>[ERR]</span> Transfer failed: " + (e.reason || "Access Denied"));
+        }
+    }
+
+    async function updateOnChainFees() {
+        const s = document.getElementById('newStaticFee').value;
+        const d = document.getElementById('newDeepFee').value;
+        const abi = ["function updateFees(uint256, uint256) external"];
+        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+    
+        try {
+            log("[SYS] Updating fees on-chain...");
+            const tx = await oracle.updateFees(ethers.parseEther(s), ethers.parseEther(d));
+            await tx.wait();
+            log("<span class='green'>[OK]</span> Fees updated successfully.");
+        } catch (e) {
+            log("<span style='color:red'>[ERR]</span> Update failed: " + (e.reason || "Not Owner"));
         }
     }
 
