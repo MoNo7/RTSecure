@@ -792,23 +792,24 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
     async function updateAdminStats() {
         if (!activeSigner) return;
         try {
-            const abi = [
-                "function balanceOf(address) view returns (uint256)",
-                "function owner() view returns (address)"
-            ];
-            const c = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
-            const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+           const abi = [
+                    "function balanceOf(address) view returns (uint256)",
+                    "function owner() view returns (address)" 
+                ];
+                const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
+                const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
         
-            // Fetch Token Balance
-            const b = await c.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
-            document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
+                const b = await token.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
+                document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
         
-            // Fetch Current Owner
-            const currentOwner = await oracle.owner();
-            document.getElementById('currentOwnerAddr').innerText = currentOwner;
-        } catch (e) {
-        console.error("Admin stats failed:", e);
-        }
+                // This call was failing because of the previous contract logic
+                const currentOwner = await oracle.owner();
+                document.getElementById('currentOwnerAddr').innerText = currentOwner;
+                document.getElementById('currentOwnerAddr').style.color = "var(--accent-green)";
+            } catch (e) {
+                console.error("Admin stats failed:", e);
+                document.getElementById('currentOwnerAddr').innerText = "Error Syncing Owner";
+            }
 
     }
     
