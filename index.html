@@ -236,7 +236,7 @@
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
-        SECURITY_ORACLE: "0xF57e74D3dEc214f400aAE1A5d1630f894D026d93",
+        SECURITY_ORACLE: "0x41fD345bc5b7Ed8569847a07697593066c960Ddf",
         RPC: "https://light-testnet-rpc.lightchain.ai",
         FEES: {
             STATIC: ethers.parseEther("100"), // 100 LCAI
@@ -780,6 +780,41 @@ document.querySelector('.stat-online').parentElement.onclick = async () => {
             } else {
                 log(`<span style='color:red'>[ERR]</span> Withdrawal failed: ${errorMsg}`);
             }
+        }
+    }
+    async function updateAdminStats() {
+        const abi = [
+            "function balanceOf(address) view returns (uint256)",
+            "function owner() view returns (address)"
+        ];
+        const c = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
+        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+    
+        // Fetch Token Balance
+        const b = await c.balanceOf(RTS_CONFIG.SECURITY_ORACLE);
+        document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
+    
+        // Fetch Current Owner
+        const currentOwner = await oracle.owner();
+        document.getElementById('currentOwnerAddr').innerText = currentOwner;
+    }
+    
+    // Function to perform the transfer
+    async function adminTransferOwnership() {
+        const newOwner = document.getElementById('newOwnerInput').value.trim();
+        if (!ethers.isAddress(newOwner)) return log("<span style='color:red'>[ERR]</span> Invalid Address.");
+    
+        const abi = ["function transferOwnership(address) external"];
+        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+    
+        try {
+            log(`[SYS] Transferring ownership to ${newOwner}...`);
+            const tx = await oracle.transferOwnership(newOwner);
+            await tx.wait();
+            log("<span class='green'>[SUCCESS]</span> Ownership transferred.");
+            updateAdminStats();
+        } catch (e) {
+            log(`<span style='color:red'>[ERR]</span> Transfer failed: ${e.reason || e.message}`);
         }
     }
 
