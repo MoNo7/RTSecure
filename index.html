@@ -401,7 +401,6 @@ userAddress: "0x4d36b31d4bfb957a5d816b0f420a9e755efc6a2c"
 })
 });
 
-const data = await response.json();
 
 // RELIABILITY FIX: Explicitly check verification status
 const effectiveVerification = isPasteMode ? true : (data.isVerified || false);
