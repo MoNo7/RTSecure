@@ -351,8 +351,6 @@ log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPa
 try {
         const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, 
             ["function approve(address,uint256) public returns (bool)", "function allowance(address,address) view returns (uint256)"], activeSigner);
-        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, 
-            ["function requestAudit(address,uint8) external"], activeSigner);
             
             const fee = (type === 0) ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
             const userAddr = await activeSigner.getAddress();
