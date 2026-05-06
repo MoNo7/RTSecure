@@ -189,7 +189,7 @@ color: #8b949e;
 <div class="main-container">
 <header class="top-bar">
 <div class="stats">
-NETWORK: <span class="green" class="stat-online">● ONLINE</span>
+NETWORK: <span class="green"><span class="stat-online">● ONLINE</span></span>
 ETH: <span id="ethTicker">$0.00</span> 
 LCAI: <span id="lcaiTicker">$0.00</span>
 <span id="userLcaiBalance" style="color:var(--accent-green); margin-left:15px; font-weight:bold; display:none;">0.00 LCAI</span>
@@ -291,33 +291,19 @@ console.error("Balance sync failed");
 }
 }
 
-    async function updateTickers() {
-        try {
-            // Fetch both LCAI and WETH from DexScreener
-            const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${RTS_CONFIG.LCA_TOKEN},${RTS_CONFIG.WETH_TOKEN}`);
-            const data = await response.json();
-
-            if (data.pairs && data.pairs.length > 0) {
-                // Find LCAI Price
-                const lcaiPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.LCA_TOKEN.toLowerCase());
-                if (lcaiPair && document.getElementById('lcaiTicker')) {
-                    document.getElementById('lcaiTicker').innerText = "$" + parseFloat(lcaiPair.priceUsd).toFixed(6);
-                }
-
-                // Find ETH Price (via WETH pair)
-                    const ethPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.WETH_TOKEN.toLowerCase());
-                    if (ethPair && document.getElementById('ethTicker')) {
-                        const price = parseFloat(ethPair.priceUsd);
-                        document.getElementById('ethTicker').innerText = "$" + price.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        });
-                    }
-            }
-        } catch (error) {
-            console.warn("Price sync pending...");
-        }
-    }
+async function updateTickers() {
+    const LCAI_TOKEN = "0x9ca8530ca349c966fe9ef903df17a75b8a778927";
+    const WETH_TOKEN = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+    try {
+        const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${LCAI_TOKEN},${WETH_TOKEN}`);
+        const data = await res.json();
+        const ethPair = data.pairs?.find(p => p.baseToken.address.toLowerCase() === WETH_TOKEN.toLowerCase());
+        if (ethPair) document.getElementById('ethTicker').innerText = "$" + parseFloat(ethPair.priceUsd).toLocaleString();
+        
+        const lcaPair = data.pairs?.find(p => p.baseToken.address.toLowerCase() === LCAI_TOKEN.toLowerCase());
+        if (lcaPair) document.getElementById('lcaiTicker').innerText = "$" + parseFloat(lcaPair.priceUsd).toFixed(6);
+    } catch (e) { console.warn("Ticker sync pending..."); }
+}
 
     // Run on load and every 60 seconds
     updateTickers();
