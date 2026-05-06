@@ -247,8 +247,8 @@
         WETH_TOKEN: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         SECURITY_ORACLE: "0x23823D942828b6d4fd28B38064aEe3a21A7C03fb",
         FEES: {
-            STATIC: ethers.parseUnits("100", 18), // 100 LCAI
-            REDTEAM: ethers.parseUnits("500", 18) // 500 LCAI
+            STATIC: ethers.parseUnits("10", 18), // 10 LCAI
+            REDTEAM: ethers.parseUnits("50", 18) // 50 LCAI
         }
     };
 
@@ -304,13 +304,14 @@
                 }
     
                 // Find ETH Price (via WETH pair)
-                const ethPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.WETH_TOKEN.toLowerCase());
-                if (ethPair && document.getElementById('ethTicker')) {
-                    document.getElementById('ethTicker').innerText = "$" + parseFloat(ethPair.priceUsd).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
-                }
+                    const ethPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.WETH_TOKEN.toLowerCase());
+                    if (ethPair && document.getElementById('ethTicker')) {
+                        const price = parseFloat(ethPair.priceUsd);
+                        document.getElementById('ethTicker').innerText = "$" + price.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    }
             }
         } catch (error) {
             console.warn("Price sync pending...");
