@@ -357,12 +357,19 @@ try {
             
             // --- STEP 1: ALLOWANCE ---
             log(`[PAYMENT] Checking LCAI balance and allowance...`);
-            const currentAllowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
+            let currentAllowance = 0n;
+            
+            try {
+                        currentAllowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
+            } catch (decodeErr) {
+                        console.warn("Allowance decode failed, forcing approval step.");
+                        currentAllowance = 0n; // Force approval if we can't read the state
+            }
             
             if (currentAllowance < fee) {
-                        log(`[PAYMENT] Increasing allowance to ${ethers.formatUnits(fee, 18)} LCAI...`);
-                        const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
-                        await appTx.wait();
+            log(`[PAYMENT] Increasing allowance to ${ethers.formatUnits(fee, 18)} LCAI...`);
+            const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
+            await appTx.wait();
             }
             
             // --- STEP 2: REQUEST AUDIT ---
