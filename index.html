@@ -378,6 +378,12 @@ try {
                 ["function requestAudit(address target, uint8 auditType) external"], 
                 activeSigner
             );
+            log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
+
+            // 1. DEFINE the interface first
+            const oracleInterface = new ethers.Interface([
+                "function requestAudit(address target, uint8 auditType) external"
+            ]);
             
             const txData = oracleInterface.encodeFunctionData("requestAudit", [
                 target || ethers.ZeroAddress, 
