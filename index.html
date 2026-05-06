@@ -779,6 +779,19 @@ async function connectWallet() {
     // document.querySelector('button').onclick = startAuditProtocol;
     // Toggle Admin Panel (Triggered by clicking the "Online" status)
 document.querySelector('.stat-online').parentElement.style.cursor = "pointer";
+
+// This makes clicking your wallet address toggle the Admin Panel
+document.getElementById('walletDisplay').onclick = async () => {
+    const panel = document.getElementById('adminPanel');
+    const isHidden = panel.style.display === 'none' || panel.style.display === '';
+    
+    panel.style.display = isHidden ? 'block' : 'none';
+    
+    if (panel.style.display === 'block') {
+        updateAdminStats();
+    }
+};    
+    
 document.querySelector('.stat-online').parentElement.onclick = async () => {
     const panel = document.getElementById('adminPanel');
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
