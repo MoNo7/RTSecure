@@ -147,6 +147,9 @@
             font-size: 0.85rem;
             color: #8b949e;
         }
+        #adminPanel {
+            z-index: 9999 !important;
+        }
 
         .log-entry { margin-bottom: 8px; }
         .green { color: var(--accent-green); }
@@ -194,7 +197,7 @@
             LCAI: <span id="lcaiTicker">$0.00</span>
             <span id="userLcaiBalance" style="color:var(--accent-green); margin-left:15px; font-weight:bold; display:none;">0.00 LCAI</span>
         </div>
-        <div id="walletDisplay" onclick="connectWallet()" style="font-size: 0.8rem; cursor:pointer; color:var(--accent-blue);">
+        <div id="walletDisplay" style="font-size: 0.8rem; cursor:pointer; color:var(--accent-blue);">
             [ CONNECT WALLET ]
         </div>
     </header>
@@ -885,6 +888,25 @@ async function updateOnChainFees() {
     } catch (e) { log("<span style='color:red'>[ERR]</span> Update failed."); }
 }
 
+document.getElementById('walletDisplay').onclick = async () => {
+    // If not connected yet, run the connection logic
+    if (!activeSigner) {
+        await connectWallet();
+        return;
+    }
+
+    // If already connected, toggle the Admin Panel
+    const panel = document.getElementById('adminPanel');
+    const isHidden = panel.style.display === 'none' || panel.style.display === '';
+    
+    panel.style.display = isHidden ? 'block' : 'none';
+    
+    if (panel.style.display === 'block') {
+        // Ensure the data is fresh when opening
+        updateAdminStats();
+    }
+};    
+    
 function log(m) { const t = document.getElementById('term'); t.innerHTML += `<div class='log-entry'>${m}</div>`; t.scrollTop = t.scrollHeight; }
     
 </script>
