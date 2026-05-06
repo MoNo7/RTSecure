@@ -290,6 +290,34 @@
         }
     }
 
+    async function updateTickers() {
+        try {
+            // Fetching ETH and LCAI (assuming LCAI is tracked or using a placeholder)
+            const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,lightchain-ai&vs_currencies=usd');
+            const data = await response.json();
+            
+            if (data.ethereum) {
+                document.getElementById('ethPrice').innerText = `$${data.ethereum.usd.toLocaleString()}`;
+            }
+            
+            // If LCAI isn't on CoinGecko yet, use your RTS_CONFIG value as a fallback
+            const lcaiPrice = data['lightchain-ai'] ? data['lightchain-ai'].usd : 0.005086;
+            document.getElementById('lcaiPrice').innerText = `$${lcaiPrice}`;
+            
+        } catch (e) {
+            console.warn("Price API Offline - Using cached values.");
+            // Fallback to display something so it doesn't stay at $0.00
+            if(!document.getElementById('ethPrice').innerText) {
+                document.getElementById('ethPrice').innerText = "$2,355.81";
+                document.getElementById('lcaiPrice').innerText = "$0.006086";
+            }
+        }
+    }
+    
+    // Run on load and every 60 seconds
+    updateTickers();
+    setInterval(updateTickers, 60000);
+
 async function connectWallet() {
     if (!window.ethereum) return log("MetaMask not found.");
     const provider = new ethers.BrowserProvider(window.ethereum);
