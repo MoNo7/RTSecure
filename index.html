@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lightchain AI | RTSecure Audit</title>
 <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:,">
 <style>
 :root {
 --bg-main: #0d1117;
@@ -342,23 +343,26 @@ document.getElementById('term').innerHTML = "";
 log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Scan' : 'On-Chain Address'}...`);
 
 try {
-const tokenAbi = ["function approve(address,uint256) public returns (bool)"];
-const oracleAbi = ["function requestAudit(address,uint8) external"];
+        const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, 
+            ["function approve(address,uint256) public returns (bool)", "function allowance(address,address) view returns (uint256)"], activeSigner);
+        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, 
+            ["function requestAudit(address,uint8) external"], activeSigner);
+        
+        const fee = (type === 0) ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
 
-const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, activeSigner);
-const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, oracleAbi, activeSigner);
+        // 1. Check current allowance to prevent gas-estimate reverts
+        const currentAllowance = await token.allowance(await activeSigner.getAddress(), RTS_CONFIG.SECURITY_ORACLE);
+        
+        if (currentAllowance < fee) {
+            log(`[PAYMENT] Increasing allowance to ${ethers.formatUnits(fee, 18)} LCAI...`);
+            const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
+            await appTx.wait();
+        }
 
-// Use CONFIG fees to prevent the 'require(false)' revert
-const fee = (type === 0) ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
-
-// --- STEP 1: PAYMENT ---
-log(`[PAYMENT] Step 1: Approving ${ethers.formatUnits(fee, 18)} LCAI...`);
-const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
-await appTx.wait();
-
-log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
-const payTx = await oracle.requestAudit(target || ethers.ZeroAddress, type);
-await payTx.wait();
+        log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
+        // Gas limit added here to override the estimateGas failure
+        const payTx = await oracle.requestAudit(target || ethers.ZeroAddress, type, { gasLimit: 200000 });
+        await payTx.wait();
 
 log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
 
@@ -859,16 +863,22 @@ log("<span class='green'>[OK]</span> Fees updated.");
 } catch (e) { log("<span style='color:red'>[ERR]</span> Update failed."); }
 }
 
- // Restores Admin Toggle + Connection Logic
-document.getElementById('walletDisplay').onclick = async () => {
-    if (!activeSigner) {
-        await connectWallet();
-    } else {
-        const panel = document.getElementById('adminPanel');
-        panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
-        if (panel.style.display === 'block') updateAdminStats();
-    }
-};
+// Clean toggle for the wallet display
+const walletBtn = document.getElementById('walletDisplay');
+if (walletBtn) {
+    walletBtn.onclick = async () => {
+        if (!activeSigner) {
+            await connectWallet();
+        } else {
+            const panel = document.getElementById('adminPanel');
+            if (panel) {
+                const isHidden = panel.style.display === 'none' || panel.style.display === '';
+                panel.style.display = isHidden ? 'block' : 'none';
+                if (panel.style.display === 'block') updateAdminStats();
+            }
+        }
+    };
+}
  
 function log(m) { const t = document.getElementById('term'); t.innerHTML += `<div class='log-entry'>${m}</div>`; t.scrollTop = t.scrollHeight; }
 
