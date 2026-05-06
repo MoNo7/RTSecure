@@ -212,8 +212,8 @@
                 </div>
                 <div style="margin-top:20px; display:flex; gap:10px;">
                     <select id="scanSelect" style="width:100%">
-                        <option value="0">Standard Audit (Syntactic - 1 LCAI)</option>
-                        <option value="1">Red Team Audit (Deep AIVM - 2 LCAI)</option>
+                        <option value="0">Standard Audit (Syntactic - 10 LCAI)</option>
+                        <option value="1">Red Team Audit (Deep AIVM - 50 LCAI)</option>
                     </select>
                     <button onclick="startAuditProtocol()" id="mainActionBtn">INITIATE SECURE SCAN</button>
                 </div>
@@ -245,7 +245,7 @@
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
         WETH_TOKEN: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-        SECURITY_ORACLE: "0x6E845B3825337Cd4986d78Fe4d1de08A49f97ccA",
+        SECURITY_ORACLE: "0x23823D942828b6d4fd28B38064aEe3a21A7C03fb",
         FEES: {
             STATIC: ethers.parseUnits("100", 18), // 100 LCAI
             REDTEAM: ethers.parseUnits("500", 18) // 500 LCAI
@@ -805,6 +805,8 @@ async function updateAdminStats() {
     
     try {
         const abi = [
+            "function staticFee() view returns (uint256)",
+            "function deepFee() view returns (uint256)",
             "function balanceOf(address) view returns (uint256)",
             "function owner() view returns (address)"
         ];
@@ -816,6 +818,19 @@ async function updateAdminStats() {
         
         const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
         const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+
+        // Fetch current fees from the blockchain
+        const sFee = await oracle.staticFee();
+        const dFee = await oracle.deepFee();
+        
+        // Update local config so 'startAuditProtocol' is always accurate
+        RTS_CONFIG.FEES.STATIC = sFee;
+        RTS_CONFIG.FEES.REDTEAM = dFee;
+
+        // Update UI Placeholders to show current on-chain cost
+        document.getElementById('newStaticFee').placeholder = ethers.formatUnits(sFee, 18);
+        document.getElementById('newDeepFee').placeholder = ethers.formatUnits(dFee, 18);
+        
         try{
             const b = await token.balanceOf(ORACLE_ADDR);
             document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
