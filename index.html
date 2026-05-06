@@ -369,6 +369,7 @@ try {
             if (currentAllowance < fee) {
             log(`[PAYMENT] Increasing allowance to ${ethers.formatUnits(fee, 18)} LCAI...`);
             const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
+                        
             await appTx.wait();
             }
             
@@ -393,7 +394,11 @@ const payTx = await activeSigner.sendTransaction({
     data: encodedData, // This MUST NOT be null
     gasLimit: 400000 
 });
-
+// Add this temporary debug log to your startAuditProtocol function
+const allowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
+const balance = await token.balanceOf(userAddr);
+log(`[DEBUG] Allowance: ${ethers.formatUnits(allowance, 18)} | Balance: ${ethers.formatUnits(balance, 18)}`);
+            
 await payTx.wait();
 log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
 
