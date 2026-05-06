@@ -520,7 +520,7 @@ async function connectWallet() {
     async function decompileBytecode(address) {
         try {
             // We use the Lightchain RPC to get the raw hex
-            const provider = new ethers.JsonRpcProvider("https://light-testnet-rpc.lightchain.ai");
+            const provider = new ethers.JsonRpcProvider("https://rpc.testnet.lightchain.ai");
             const bytecode = await provider.getCode(address);
     
             if (bytecode === "0x") {
