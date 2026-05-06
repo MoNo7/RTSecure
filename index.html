@@ -247,8 +247,7 @@ LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
 WETH_TOKEN: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
 SECURITY_ORACLE: "0x23823D942828b6d4fd28B38064aEe3a21A7C03fb",
 FEES: {
-            STATIC: ethers.parseUnits("100", 18), // 100 LCAI
-            REDTEAM: ethers.parseUnits("500", 18) // 500 LCAI
+
             STATIC: ethers.parseUnits("10", 18), // 10 LCAI
             REDTEAM: ethers.parseUnits("50", 18) // 50 LCAI
 }
@@ -881,6 +880,17 @@ log("<span class='green'>[OK]</span> Fees updated.");
 } catch (e) { log("<span style='color:red'>[ERR]</span> Update failed."); }
 }
 
+ // Restores Admin Toggle + Connection Logic
+document.getElementById('walletDisplay').onclick = async () => {
+    if (!activeSigner) {
+        await connectWallet();
+    } else {
+        const panel = document.getElementById('adminPanel');
+        panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
+        if (panel.style.display === 'block') updateAdminStats();
+    }
+};
+ 
 function log(m) { const t = document.getElementById('term'); t.innerHTML += `<div class='log-entry'>${m}</div>`; t.scrollTop = t.scrollHeight; }
 
 </script>
