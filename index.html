@@ -189,9 +189,9 @@
     <div class="main-container">
     <header class="top-bar">
         <div class="stats">
-            <span>NETWORK: <span class="stat-online">● ONLINE</span></span>
-            <span>ETH: $2,355.81</span>
-            <span>LCAI: $0.005086</span>
+            NETWORK: <span class="green">● ONLINE</span> 
+            ETH: <span id="ethTicker">$0.00</span> 
+            LCAI: <span id="lcaiTicker">$0.00</span>
             <span id="userLcaiBalance" style="color:var(--accent-green); margin-left:15px; font-weight:bold; display:none;">0.00 LCAI</span>
         </div>
         <div id="walletDisplay" onclick="connectWallet()" style="font-size: 0.8rem; cursor:pointer; color:var(--accent-blue);">
@@ -244,11 +244,11 @@
 <script>
     const RTS_CONFIG = {
         LCA_TOKEN: "0x9ca8530ca349c966fe9ef903df17a75b8a778927",
+        WETH_TOKEN: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         SECURITY_ORACLE: "0x6E845B3825337Cd4986d78Fe4d1de08A49f97ccA",
-        RPC: "https://rpc.testnet.lightchain.ai",
         FEES: {
-            STATIC: ethers.parseEther("100"), // 100 LCAI
-            REDTEAM: ethers.parseEther("500")  // 500 LCAI
+            STATIC: ethers.parseUnits("100", 18), // 100 LCAI
+            REDTEAM: ethers.parseUnits("500", 18) // 500 LCAI
         }
     };
 
@@ -292,25 +292,28 @@
 
     async function updateTickers() {
         try {
-            // Fetching ETH and LCAI (assuming LCAI is tracked or using a placeholder)
-            const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,lightchain-ai&vs_currencies=usd');
+            // Fetch both LCAI and WETH from DexScreener
+            const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${RTS_CONFIG.LCA_TOKEN},${RTS_CONFIG.WETH_TOKEN}`);
             const data = await response.json();
-            
-            if (data.ethereum) {
-                document.getElementById('ethPrice').innerText = `$${data.ethereum.usd.toLocaleString()}`;
+    
+            if (data.pairs && data.pairs.length > 0) {
+                // Find LCAI Price
+                const lcaiPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.LCA_TOKEN.toLowerCase());
+                if (lcaiPair && document.getElementById('lcaiTicker')) {
+                    document.getElementById('lcaiTicker').innerText = "$" + parseFloat(lcaiPair.priceUsd).toFixed(6);
+                }
+    
+                // Find ETH Price (via WETH pair)
+                const ethPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.WETH_TOKEN.toLowerCase());
+                if (ethPair && document.getElementById('ethTicker')) {
+                    document.getElementById('ethTicker').innerText = "$" + parseFloat(ethPair.priceUsd).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                }
             }
-            
-            // If LCAI isn't on CoinGecko yet, use your RTS_CONFIG value as a fallback
-            const lcaiPrice = data['lightchain-ai'] ? data['lightchain-ai'].usd : 0.005086;
-            document.getElementById('lcaiPrice').innerText = `$${lcaiPrice}`;
-            
-        } catch (e) {
-            console.warn("Price API Offline - Using cached values.");
-            // Fallback to display something so it doesn't stay at $0.00
-            if(!document.getElementById('ethPrice').innerText) {
-                document.getElementById('ethPrice').innerText = "$2,355.81";
-                document.getElementById('lcaiPrice').innerText = "$0.006086";
-            }
+        } catch (error) {
+            console.warn("Price sync pending...");
         }
     }
     
@@ -339,43 +342,39 @@ async function connectWallet() {
     }
 
         // --- Main Audit Pipeline ---
-        async function startAuditProtocol() {
-            log("[SYS] Scan initiated...");
+          async function startAuditProtocol() {
             const target = document.getElementById('targetAddr').value.trim();
             const type = parseInt(document.getElementById('scanSelect').value);
             const pastedCode = document.getElementById('unverifiedCode').value.trim();
             const isPasteMode = document.getElementById('unverifiedCode').style.display === 'block';
         
+            if (!activeSigner) return log("<span style='color:red'>[ERR]</span> Connect wallet first.");
+            
             document.getElementById('term').innerHTML = ""; 
-            // Use "On-Chain Scan" instead of "Verified" to stay accurate until verified
             log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Scan' : 'On-Chain Address'}...`);
-        if (!activeSigner) return log("<span style='color:red'>[ERR]</span> Connect wallet first.");
-
-    try {
-        const abi = ["function approve(address, uint256) public returns (bool)", "function requestAudit(address, uint8) external"];
-        const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
-        const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
         
-        const oracleAbi = [
-            "function staticFee() view returns (uint256)",
-            "function deepFee() view returns (uint256)",
-            "function requestAudit(address, uint8) external"
-        ];
-        const tokenAbi = ["function approve(address, uint256) public returns (bool)"];
+            try {
+                const tokenAbi = ["function approve(address,uint256) public returns (bool)"];
+                const oracleAbi = ["function requestAudit(address,uint8) external"];
+                
+                const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, activeSigner);
+                const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, oracleAbi, activeSigner);
+                
+                // Use CONFIG fees to prevent the 'require(false)' revert
+                const fee = (type === 0) ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
         
-        // Fetch actual fees from contract
-        const fee = type === 0 ? ethers.parseEther("1") : ethers.parseEther("2");
-        log(`[PAYMENT] Step 1: Approving ${ethers.formatEther(fee)} LCAI...`);
-        const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
-        await appTx.wait();
+                // --- STEP 1: PAYMENT ---
+                log(`[PAYMENT] Step 1: Approving ${ethers.formatUnits(fee, 18)} LCAI...`);
+                const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
+                await appTx.wait();
         
-        // 2. CHARGE (This is the revenue collection step)
-        log("[PAYMENT] Confirming Secure Audit Fee...");
-        const payTx = await oracle.requestAudit(target || ethers.ZeroAddress, type);
-        await payTx.wait();
-
-        log("<span class='green'>[PAID]</span> Revenue collected. Launching AI Audit...");
-        try {
+                log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
+                const payTx = await oracle.requestAudit(target || ethers.ZeroAddress, type);
+                await payTx.wait();
+        
+                log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
+        
+                // --- STEP 2: AI SCAN (Only runs if payment succeeded) ---
                 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -388,16 +387,13 @@ async function connectWallet() {
                 });
         
                 const data = await response.json();
-
+                
                 // RELIABILITY FIX: Explicitly check verification status
                 const effectiveVerification = isPasteMode ? true : (data.isVerified || false);
                 const sourceStatus = isPasteMode ? "Manual Code Input" : (data.isVerified ? "Verified Source" : "Unverified Bytecode");
                 log(`[INFO] Sourcing Logic: <span style="color:white; background:#333; padding:2px 5px;">${sourceStatus}</span>`);
-
-                
-                const reportContent = data.report || "No analysis returned.";
+        
                 const finalSource = data.sourceCode || pastedCode || "";
-                
                 await executeSyntacticScan(target || "PastedCode", finalSource, effectiveVerification);
         
                 if (type === 1) {
@@ -406,9 +402,8 @@ async function connectWallet() {
                     log("<span class='green'>[COMPLETE]</span> Standard Audit Results:");
                     log(`<div style="color:#8b949e; margin-top:10px; border-left: 2px solid var(--accent-green); padding-left:10px;">${data.report}</div>`);
                 }
-
-                // --- 2. LIGHTSCAN VERIFY BUTTON ---
-                // Only show if it's an on-chain scan AND the code is unverified
+        
+                // Show Verify Button if unverified
                 if (!isPasteMode && !data.isVerified) {
                     log(`<div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 10px;">
                         <span style="color: orange; font-size: 0.85rem;">[!] Deep AIVM scanning requires verified source code.</span><br>
@@ -418,12 +413,13 @@ async function connectWallet() {
                         </a>
                     </div>`);
                 }
+        
             } catch (e) {
-                log(`<span style='color:red'>[FAIL]</span> ${e.message}`);
+                // Detailed error logging for reverts
+                const errMsg = e.reason || e.message;
+                log(`<span style='color:red'>[FAIL]</span> ${errMsg.includes("rejected") ? "User denied transaction." : "Transaction reverted: " + errMsg}`);
+                console.error("Audit Protocol Error:", e);
             }
-        } catch (e) {
-        log(`<span style='color:red'>[FAIL]</span> Transaction reverted: ${e.reason || e.message}`);
-    }
         }
         
         // Add this to handle the buttons
