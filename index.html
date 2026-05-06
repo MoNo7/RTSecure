@@ -291,27 +291,20 @@ console.error("Balance sync failed");
 }
 }
 
-async function updateTickers() {
-try {
-// Fetch both LCAI and WETH from DexScreener
-const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${RTS_CONFIG.LCA_TOKEN},${RTS_CONFIG.WETH_TOKEN}`);
-const data = await response.json();
+    async function updateTickers() {
+        try {
+            // Fetch both LCAI and WETH from DexScreener
+            const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${RTS_CONFIG.LCA_TOKEN},${RTS_CONFIG.WETH_TOKEN}`);
+            const data = await response.json();
 
-if (data.pairs && data.pairs.length > 0) {
-// Find LCAI Price
-const lcaiPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.LCA_TOKEN.toLowerCase());
-if (lcaiPair && document.getElementById('lcaiTicker')) {
-document.getElementById('lcaiTicker').innerText = "$" + parseFloat(lcaiPair.priceUsd).toFixed(6);
-}
-
-// Find ETH Price (via WETH pair)
-                const ethPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.WETH_TOKEN.toLowerCase());
-                if (ethPair && document.getElementById('ethTicker')) {
-                    document.getElementById('ethTicker').innerText = "$" + parseFloat(ethPair.priceUsd).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
+            if (data.pairs && data.pairs.length > 0) {
+                // Find LCAI Price
+                const lcaiPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.LCA_TOKEN.toLowerCase());
+                if (lcaiPair && document.getElementById('lcaiTicker')) {
+                    document.getElementById('lcaiTicker').innerText = "$" + parseFloat(lcaiPair.priceUsd).toFixed(6);
                 }
+
+                // Find ETH Price (via WETH pair)
                     const ethPair = data.pairs.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.WETH_TOKEN.toLowerCase());
                     if (ethPair && document.getElementById('ethTicker')) {
                         const price = parseFloat(ethPair.priceUsd);
@@ -320,35 +313,35 @@ document.getElementById('lcaiTicker').innerText = "$" + parseFloat(lcaiPair.pric
                             maximumFractionDigits: 2
                         });
                     }
-}
-} catch (error) {
-console.warn("Price sync pending...");
-}
-}
+            }
+        } catch (error) {
+            console.warn("Price sync pending...");
+        }
+    }
 
-// Run on load and every 60 seconds
-updateTickers();
-setInterval(updateTickers, 60000);
+    // Run on load and every 60 seconds
+    updateTickers();
+    setInterval(updateTickers, 60000);
+ 
+  async function connectWallet() {
+   if (!window.ethereum) return log("MetaMask not found.");
+   const provider = new ethers.BrowserProvider(window.ethereum);
+   const accounts = await provider.send("eth_requestAccounts", []);
+   activeSigner = await provider.getSigner();
+   document.getElementById('walletDisplay').innerText = `[ ${accounts[0].slice(0,6)}... ]`;
+   log(`[AUTH] Linked: ${accounts[0]}`);
+   updateAdminStats();
+  }
 
-async function connectWallet() {
-if (!window.ethereum) return log("MetaMask not found.");
-const provider = new ethers.BrowserProvider(window.ethereum);
-const accounts = await provider.send("eth_requestAccounts", []);
-activeSigner = await provider.getSigner();
-document.getElementById('walletDisplay').innerText = `[ ${accounts[0].slice(0,6)}... ]`;
-log(`[AUTH] Linked: ${accounts[0]}`);
-updateAdminStats();
-}
-
-function setupEventListener() {
-const abi = ["event AuditRequested(uint256 indexed taskId, address targetContract, uint8 auditType)"];
-oracleContract = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
-
-oracleContract.on("AuditRequested", (taskId, target, type) => {
-log(`<span class='green'>[EVENT]</span> AIVM Task #${taskId} detected for ${target.slice(0,10)}...`);
-log(`> Dispatching to Lightchain Worker Pool...`);
-});
-}
+ function setupEventListener() {
+   const abi = ["event AuditRequested(uint256 indexed taskId, address targetContract, uint8 auditType)"];
+   oracleContract = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+   
+   oracleContract.on("AuditRequested", (taskId, target, type) => {
+   log(`<span class='green'>[EVENT]</span> AIVM Task #${taskId} detected for ${target.slice(0,10)}...`);
+   log(`> Dispatching to Lightchain Worker Pool...`);
+   });
+ }
 
 // --- Main Audit Pipeline ---
 async function startAuditProtocol() {
