@@ -244,7 +244,7 @@ LCAI: <span id="lcaiTicker">$0.00</span>
 
 <script>
 const RTS_CONFIG = {
-LCA_TOKEN: "0x9cA8530CA349c966Fe9ef903Df17a75B8A778927",
+LCAI_TOKEN: "0x9cA8530CA349c966Fe9ef903Df17a75B8A778927",
 WETH_TOKEN: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
 SECURITY_ORACLE: "0x23823D942828b6d4fd28B38064aEe3a21A7C03fb",
 FEES: {
@@ -281,7 +281,7 @@ async function updateLcaiBalance(userAddress) {
 try {
 const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
 const provider = new ethers.BrowserProvider(window.ethereum);
-const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, provider);
+const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, tokenAbi, provider);
 const balance = await token.balanceOf(userAddress);
 
 const el = document.getElementById('userLcaiBalance');
@@ -305,7 +305,7 @@ async function updateTickers() {
             }
         
         const lcaPair = data.pairs?.find(p => p.baseToken.address.toLowerCase() === LCAI_TOKEN.toLowerCase());
-        if (lcaPair) document.getElementById('lcaiTicker').innerText = "$" + parseFloat(lcaPair.priceUsd).toFixed(6);
+        if (lcaiPair) document.getElementById('lcaiTicker').innerText = "$" + parseFloat(lcaiPair.priceUsd).toFixed(6);
     } catch (e) { console.warn("Ticker sync pending..."); }
 }
 
@@ -324,12 +324,12 @@ async function updateTickers() {
   }
 
  function setupEventListener() {
-   const abi = ["event AuditRequested(uint256 indexed taskId, address targetContract, uint8 auditType)"];
+   const abi = ["event AuditRequested(uint256 indexed taskId, address indexed client, address target, uint8 auditType)"];
    oracleContract = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
-   
-   oracleContract.on("AuditRequested", (taskId, target, type) => {
-   log(`<span class='green'>[EVENT]</span> AIVM Task #${taskId} detected for ${target.slice(0,10)}...`);
-   log(`> Dispatching to Lightchain Worker Pool...`);
+
+   oracleContract.on("AuditRequested", (taskId, client, target, type) => {
+            log(`<span class='green'>[EVENT]</span> AIVM Task #${taskId} detected for ${target.slice(0, 10)}...`);
+            log(`> Dispatching to Lightchain Worker Pool...`);
    });
  }
 
@@ -346,7 +346,7 @@ document.getElementById('term').innerHTML = "";
 log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Scan' : 'On-Chain Address'}...`);
 
 try {
-            const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, 
+            const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, 
             ["function approve(address,uint256) public returns (bool)", "function allowance(address,address) view returns (uint256)"], activeSigner);
             
             const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, 
@@ -773,7 +773,7 @@ async function handleLcaiPayment(amount) {
 const tokenAbi = ["function approve(address spender, uint256 amount) public returns (bool)"];
 const oracleAbi = ["function requestAudit(address target, uint256 fee) public"];
 
-const tokenContract = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, tokenAbi, activeSigner);
+const tokenContract = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, tokenAbi, activeSigner);
 const oracleContract = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, oracleAbi, activeSigner);
 
 log(`[PAYMENT] Approving ${ethers.formatEther(amount)} LCAI...`);
@@ -830,7 +830,7 @@ document.getElementById('currentOwnerAddr').innerText = "Wrong Contract Address"
 return;
 }
 
-const token = new ethers.Contract(RTS_CONFIG.LCA_TOKEN, abi, activeSigner);
+const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, abi, activeSigner);
 const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
 
 // Fetch current fees from the blockchain
