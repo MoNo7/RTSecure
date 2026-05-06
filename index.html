@@ -298,13 +298,10 @@ async function updateTickers() {
     try {
         const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${LCAI_TOKEN},${WETH_TOKEN}`);
         const data = await res.json();
-            const ethPair = data.pairs?.find(p => p.baseToken.address.toLowerCase() === WETH_TOKEN.toLowerCase());
+            // Inside updateTickers()
+            const ethPair = data.pairs?.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.WETH_TOKEN.toLowerCase());
             if (ethPair) {
-                const ethPrice = parseFloat(ethPair.priceUsd).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-                document.getElementById('ethTicker').innerText = "$" + ethPrice;
+                document.getElementById('ethTicker').innerText = "$" + parseFloat(ethPair.priceUsd).toLocaleString(undefined, {minimumFractionDigits: 2});
             }
         
         const lcaPair = data.pairs?.find(p => p.baseToken.address.toLowerCase() === LCAI_TOKEN.toLowerCase());
