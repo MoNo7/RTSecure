@@ -374,7 +374,7 @@ try {
                 "function requestAudit(address target, uint8 auditType) external"
             ]);
             
-            const txdata = oracleInterface.encodeFunctionData("requestAudit", [
+            const txData = oracleInterface.encodeFunctionData("requestAudit", [
                 target || ethers.ZeroAddress, 
                 type
             ]);
