@@ -385,6 +385,8 @@ try {
 
             // --- STEP 2: REQUEST AUDIT (Robust Version) ---
 log("[PAYMENT] Step 2: Running Pre-flight Check...");
+            log(`[DEBUG] Targeting Address: ${target || "0x000... (Manual Code Mode)"}`);
+log(`[DEBUG] Using Oracle: ${RTS_CONFIG.SECURITY_ORACLE}`);
 
 const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external"]);
 const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, type]);
@@ -923,39 +925,21 @@ if (walletBtn) {
 }
 
 function handleAuditError(err) {
-    let friendlyMsg = "Unknown Error";
+    let friendlyMsg = "Execution Error";
     
-    // Define the interface locally so it can decode revert data
-    const oracleInterface = new ethers.Interface([
-        "function requestAudit(address target, uint8 auditType) external",
-        "error InsufficientBalance()", // Add any custom errors your contract has
-        "error EscrowFailed()"
-    ]);
-
-    if (err.data) {
-        try {
-            const decodedError = oracleInterface.parseError(err.data);
-            friendlyMsg = `Contract Revert: ${decodedError ? decodedError.name : "Check LCAI Allowance/Balance"}`;
-        } catch (e) {
-            friendlyMsg = "Contract Reverted (Could not decode reason)";
-        }
-    }
-    // 1. Check for User Rejection
+    // 1. Extract the specific 'require' reason if available
+    const revertReason = err.reason || (err.info?.error?.message) || "";
+    
     if (err.code === "ACTION_REJECTED") {
         friendlyMsg = "User denied transaction in MetaMask.";
-    } 
-    // 2. Check for Revert Reasons
-    else if (err.code === "CALL_EXCEPTION") {
-        friendlyMsg = "Blockchain Revert: Check if your LCAI balance is exactly 10+ and you are on Chain 8200.";
-        if (err.reason) friendlyMsg = `Contract says: ${err.reason}`;
-    }
-    // 3. Check for Network Mismatch
-    else if (err.message.includes("network")) {
-        friendlyMsg = "Network Error: Please switch MetaMask to Lightchain AI V2 Testnet.";
-    }
-    // 4. Check for BAD_DATA (Missing Contract)
-    else if (err.code === "BAD_DATA") {
-        friendlyMsg = "Contract Not Found: The Token or Oracle address does not exist on this chain.";
+    } else if (revertReason.includes("Escrow failed")) {
+        friendlyMsg = "LCAI Transfer Failed: Check that you have 10+ LCAI and have Approved the Oracle.";
+    } else if (revertReason.includes("Not owner")) {
+        friendlyMsg = "Access Denied: Only the contract owner can perform this action.";
+    } else if (err.code === "BAD_DATA") {
+        friendlyMsg = "Contract Not Found: Ensure your LCAI_TOKEN address is correct for Chain 8200.";
+    } else {
+        friendlyMsg = `Blockchain Revert: ${revertReason || "Check Balance/Allowance"}`;
     }
 
     log(`<span style='color:#ff7b72'>[SYSTEM ERROR]</span> ${friendlyMsg}`);
