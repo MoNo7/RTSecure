@@ -298,8 +298,7 @@ async function updateTickers() {
     try {
         const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${LCAI_TOKEN},${WETH_TOKEN}`);
         const data = await res.json();
-            // Inside updateTickers()
-            const ethPair = data.pairs?.find(p => p.baseToken.address.toLowerCase() === RTS_CONFIG.WETH_TOKEN.toLowerCase());
+            const ethPair = data.pairs?.find(p => p.baseToken.address.toLowerCase() === WETH_TOKEN.toLowerCase());
             if (ethPair) {
                 document.getElementById('ethTicker').innerText = "$" + parseFloat(ethPair.priceUsd).toLocaleString(undefined, {minimumFractionDigits: 2});
             }
@@ -346,8 +345,11 @@ document.getElementById('term').innerHTML = "";
 log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Scan' : 'On-Chain Address'}...`);
 
 try {
-            const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, 
-            ["function approve(address,uint256) public returns (bool)", "function allowance(address,address) view returns (uint256)"], activeSigner);
+            const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, [
+                "function approve(address,uint256) public returns (bool)",
+                "function allowance(address,address) view returns (uint256)",
+                "function balanceOf(address) view returns (uint256)" // ADD THIS LINE
+            ], activeSigner);
             
             const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, 
             ["function requestAudit(address target, uint8 auditType) external"], activeSigner);
@@ -376,24 +378,14 @@ try {
             // --- STEP 2: REQUEST AUDIT ---
 // --- STEP 2: REQUEST AUDIT ---
 log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
+const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external"]);
+        const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, type]);
 
-// 1. Manually create the interface
-const iface = new ethers.Interface([
-    "function requestAudit(address target, uint8 auditType) external"
-]);
-
-// 2. Explicitly encode the payload
-const encodedData = iface.encodeFunctionData("requestAudit", [
-    target || ethers.ZeroAddress, 
-    type
-]);
-
-// 3. Force the transaction with data
-const payTx = await activeSigner.sendTransaction({
-    to: RTS_CONFIG.SECURITY_ORACLE,
-    data: encodedData, // This MUST NOT be null
-    gasLimit: 400000 
-});
+        const payTx = await activeSigner.sendTransaction({
+            to: RTS_CONFIG.SECURITY_ORACLE,
+            data: encodedData,
+            gasLimit: 400000 
+        });
 
 const userBalance = await token.balanceOf(userAddr);
 log(`[DEBUG] Wallet Balance: ${ethers.formatUnits(userBalance, 18)} LCAI`);
