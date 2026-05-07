@@ -395,6 +395,11 @@ const payTx = await activeSigner.sendTransaction({
     gasLimit: 400000 
 });
 
+const userBalance = await token.balanceOf(userAddr);
+log(`[DEBUG] Wallet Balance: ${ethers.formatUnits(userBalance, 18)} LCAI`);
+if (userBalance < fee) {
+    throw new Error(`Insufficient Balance. You need ${ethers.formatUnits(fee, 18)} LCAI on Chain 8200.`);
+}
 // Add this temporary debug log to your startAuditProtocol function
 const allowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
 const balance = await token.balanceOf(userAddr);
