@@ -372,19 +372,27 @@ try {
             log("[OK] Allowance secured.");
         }
 
-        // 3. Force Encoded RequestAudit
+     log(`[PAYMENT] Allowance already detected for ${RTS_CONFIG.SECURITY_ORACLE.slice(0,10)}...`);
+
+        // --- STEP 2: REQUEST AUDIT ---
         log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
+        
         const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external"]);
         const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, type]);
 
-        const payTx = await activeSigner.sendTransaction({
-            to: RTS_CONFIG.SECURITY_ORACLE,
-            data: encodedData,
-            gasLimit: 500000 
-        });
+        try {
+            const payTx = await activeSigner.sendTransaction({
+                to: RTS_CONFIG.SECURITY_ORACLE,
+                data: encodedData,
+                gasLimit: 500000 
+            });
 
-        await payTx.wait();
-        log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
+            await payTx.wait();
+            log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
+        } catch (txErr) {
+            log("<span style='color:red'>[FAIL]</span> Audit request failed. Ensure you are on Chain 8200.");
+            throw txErr;
+        }
             
 // --- STEP 2: AI SCAN (Only runs if payment succeeded) ---
 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
