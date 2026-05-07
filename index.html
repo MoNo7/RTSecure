@@ -924,12 +924,22 @@ if (walletBtn) {
 
 function handleAuditError(err) {
     let friendlyMsg = "Unknown Error";
+    
+    // Define the interface locally so it can decode revert data
+    const oracleInterface = new ethers.Interface([
+        "function requestAudit(address target, uint8 auditType) external",
+        "error InsufficientBalance()", // Add any custom errors your contract has
+        "error EscrowFailed()"
+    ]);
 
-            if (err.data) {
-                // Attempt to decode the custom error or require string
-                const decodedError = iface.parseError(err.data);
-                friendlyMsg = `Contract Revert: ${decodedError ? decodedError.name : "Check LCAI Allowance/Balance"}`;
-            }
+    if (err.data) {
+        try {
+            const decodedError = oracleInterface.parseError(err.data);
+            friendlyMsg = `Contract Revert: ${decodedError ? decodedError.name : "Check LCAI Allowance/Balance"}`;
+        } catch (e) {
+            friendlyMsg = "Contract Reverted (Could not decode reason)";
+        }
+    }
     // 1. Check for User Rejection
     if (err.code === "ACTION_REJECTED") {
         friendlyMsg = "User denied transaction in MetaMask.";
