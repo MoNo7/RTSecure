@@ -363,13 +363,22 @@ try {
                 console.warn("Token contract not found at address. Proceeding anyway...");
                 log("<span style='color:orange'>[WARN]</span> Balance check skipped (Contract not found).");
             }
-        // 2. Check and Handle Allowance
-        const allowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
+       // 2. Check and Handle Allowance Safely
+        let allowance = 0n;
+        try {
+            allowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
+        } catch (e) {
+            log("[WARN] Allowance check failed. Forcing fresh approval...");
+        }
+
         if (allowance < fee) {
-            log(`[PAYMENT] Increasing allowance...`);
+            log(`[PAYMENT] Target Oracle: ${RTS_CONFIG.SECURITY_ORACLE}`);
+            log(`[PAYMENT] Status: No permission found for this new contract.`);
+            log(`[PAYMENT] Action: Requesting 10 LCAI Approval...`);
+            
             const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
             await appTx.wait();
-            log("[OK] Allowance secured.");
+            log("<span class='green'>[OK]</span> Permission granted to new Oracle.");
         }
 
      log(`[PAYMENT] Allowance already detected for ${RTS_CONFIG.SECURITY_ORACLE.slice(0,10)}...`);
