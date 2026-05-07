@@ -345,62 +345,44 @@ document.getElementById('term').innerHTML = "";
 log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Scan' : 'On-Chain Address'}...`);
 
 try {
-            const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, [
-                "function approve(address,uint256) public returns (bool)",
-                "function allowance(address,address) view returns (uint256)",
-                "function balanceOf(address) view returns (uint256)" // ADD THIS LINE
-            ], activeSigner);
-            
-            const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, 
-            ["function requestAudit(address target, uint8 auditType) external"], activeSigner);
-            
-            const fee = (type === 0) ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
-            const userAddr = await activeSigner.getAddress();
-            
-            // --- STEP 1: ALLOWANCE ---
-            log(`[PAYMENT] Checking LCAI balance and allowance...`);
-            let currentAllowance = 0n;
-            
-            try {
-                        currentAllowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
-            } catch (decodeErr) {
-                        console.warn("Allowance decode failed, forcing approval step.");
-                        currentAllowance = 0n; // Force approval if we can't read the state
-            }
-            
-            if (currentAllowance < fee) {
-            log(`[PAYMENT] Increasing allowance to ${ethers.formatUnits(fee, 18)} LCAI...`);
+        const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, [
+            "function approve(address,uint256) public returns (bool)",
+            "function allowance(address,address) view returns (uint256)",
+            "function balanceOf(address) view returns (uint256)"
+        ], activeSigner);
+
+        const fee = (type === 0) ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
+        const userAddr = await activeSigner.getAddress();
+
+        // 1. Check Balance First
+        const balance = await token.balanceOf(userAddr);
+        if (balance < fee) {
+            throw new Error(`Insufficient LCAI. Need ${ethers.formatUnits(fee, 18)}, have ${ethers.formatUnits(balance, 18)}`);
+        }
+
+        // 2. Check and Handle Allowance
+        const allowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
+        if (allowance < fee) {
+            log(`[PAYMENT] Increasing allowance...`);
             const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
-                        
             await appTx.wait();
-            }
-            
-            // --- STEP 2: REQUEST AUDIT ---
-                    log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
-                    
-                    const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external"]);
-                    const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, type]);
-            
-                    const payTx = await activeSigner.sendTransaction({
-                        to: RTS_CONFIG.SECURITY_ORACLE,
-                        data: encodedData, // This ensures MetaMask sends the 'requestAudit' call
-                        gasLimit: 400000 
-                    });
+            log("[OK] Allowance secured.");
+        }
 
+        // 3. Force Encoded RequestAudit
+        log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
+        const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external"]);
+        const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, type]);
 
-const userBalance = await token.balanceOf(userAddr);
-log(`[DEBUG] Wallet Balance: ${ethers.formatUnits(userBalance, 18)} LCAI`);
-if (userBalance < fee) {
-    throw new Error(`Insufficient Balance. You need ${ethers.formatUnits(fee, 18)} LCAI on Chain 8200.`);
-}
-// Add this temporary debug log to your startAuditProtocol function
-const allowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
-const balance = await token.balanceOf(userAddr);
-log(`[DEBUG] Allowance: ${ethers.formatUnits(allowance, 18)} | Balance: ${ethers.formatUnits(balance, 18)}`);
+        const payTx = await activeSigner.sendTransaction({
+            to: RTS_CONFIG.SECURITY_ORACLE,
+            data: encodedData,
+            gasLimit: 500000 
+        });
+
+        await payTx.wait();
+        log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
             
-                        await payTx.wait();
-log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
-
 // --- STEP 2: AI SCAN (Only runs if payment succeeded) ---
 const response = await fetch("https://rtsecure-backend.lcaitestnet.workers.dev", {
 method: "POST",
