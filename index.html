@@ -293,7 +293,7 @@ console.error("Balance sync failed");
 }
 
 async function updateTickers() {
-    const LCAI_TOKEN = "0x9ca8530ca349c966fe9ef903df17a75b8a778927";
+    const LCAI_TOKEN = "0x9cA8530CA349c966Fe9ef903Df17a75B8A778927";
     const WETH_TOKEN = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
     try {
         const res = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${LCAI_TOKEN},${WETH_TOKEN}`);
@@ -376,16 +376,17 @@ try {
             }
             
             // --- STEP 2: REQUEST AUDIT ---
-// --- STEP 2: REQUEST AUDIT ---
-log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
-const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external"]);
-        const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, type]);
+                    log("[PAYMENT] Step 2: Confirming Secure Audit Fee...");
+                    
+                    const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external"]);
+                    const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, type]);
+            
+                    const payTx = await activeSigner.sendTransaction({
+                        to: RTS_CONFIG.SECURITY_ORACLE,
+                        data: encodedData, // This ensures MetaMask sends the 'requestAudit' call
+                        gasLimit: 400000 
+                    });
 
-        const payTx = await activeSigner.sendTransaction({
-            to: RTS_CONFIG.SECURITY_ORACLE,
-            data: encodedData,
-            gasLimit: 400000 
-        });
 
 const userBalance = await token.balanceOf(userAddr);
 log(`[DEBUG] Wallet Balance: ${ethers.formatUnits(userBalance, 18)} LCAI`);
@@ -397,7 +398,7 @@ const allowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
 const balance = await token.balanceOf(userAddr);
 log(`[DEBUG] Allowance: ${ethers.formatUnits(allowance, 18)} | Balance: ${ethers.formatUnits(balance, 18)}`);
             
-await payTx.wait();
+                        await payTx.wait();
 log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
 
 // --- STEP 2: AI SCAN (Only runs if payment succeeded) ---
