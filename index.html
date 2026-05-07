@@ -384,34 +384,28 @@ try {
      log(`[PAYMENT] Allowance already detected for ${RTS_CONFIG.SECURITY_ORACLE.slice(0,10)}...`);
 
             // --- STEP 2: REQUEST AUDIT (Robust Version) ---
-        log("[PAYMENT] Step 2: Encoding Audit Request...");
-        
-        try {
-            // Explicitly encode the function call so 'data' is never null
-            const iface = new ethers.Interface([
-                "function requestAudit(address target, uint8 auditType) external"
-            ]);
-            
-            const encodedData = iface.encodeFunctionData("requestAudit", [
-                target || ethers.ZeroAddress, 
-                type
-            ]);
+log("[PAYMENT] Step 2: Running Pre-flight Check...");
 
-            const payTx = await activeSigner.sendTransaction({
-                to: RTS_CONFIG.SECURITY_ORACLE,
-                data: encodedData,
-                gasLimit: 500000 // Higher limit to ensure internal transferFrom succeeds
-            });
+const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external"]);
+const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, type]);
 
-            log(`[TX] Broadcasted: <a href="https://testnet.lightscan.app/tx/${payTx.hash}" target="_blank" style="color:var(--accent-blue)">${payTx.hash.slice(0,15)}...</a>`);
-            
-            const receipt = await payTx.wait();
-            if (receipt.status === 0) throw new Error("On-chain execution failed.");
-            
-            log("<span class='green'>[PAID]</span> Revenue secured. Launching AI Audit...");
-        } catch (txErr) {
-            handleAuditError(txErr);
-            throw txErr;
+try {
+    // DRY RUN: If this fails, the contract will revert.
+    await activeSigner.estimateGas({
+        to: RTS_CONFIG.SECURITY_ORACLE,
+        data: encodedData
+    });
+    
+    const payTx = await activeSigner.sendTransaction({
+        to: RTS_CONFIG.SECURITY_ORACLE,
+        data: encodedData,
+        gasLimit: 500000 
+    });
+    
+    // ... rest of your wait() logic
+} catch (estimateErr) {
+    handleAuditError(estimateErr); // This will now catch the revert BEFORE you spend gas
+    throw new Error("Pre-flight gas estimation failed. Transaction would revert.");
         }
             
 // --- STEP 2: AI SCAN (Only runs if payment succeeded) ---
@@ -930,7 +924,12 @@ if (walletBtn) {
 
 function handleAuditError(err) {
     let friendlyMsg = "Unknown Error";
-    
+
+            if (err.data) {
+                // Attempt to decode the custom error or require string
+                const decodedError = iface.parseError(err.data);
+                friendlyMsg = `Contract Revert: ${decodedError ? decodedError.name : "Check LCAI Allowance/Balance"}`;
+            }
     // 1. Check for User Rejection
     if (err.code === "ACTION_REJECTED") {
         friendlyMsg = "User denied transaction in MetaMask.";
