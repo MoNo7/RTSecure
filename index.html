@@ -335,6 +335,9 @@ async function updateTickers() {
 
 // --- Main Audit Pipeline ---
 async function startAuditProtocol() {
+  const logContainer = document.getElementById('terminal-logs'); // or your log ID
+  if (logContainer) logContainer.innerHTML = ''; 
+  log("[SYS] Initializing RTSecure AI Engine...");
   const target = document.getElementById('targetAddr').value.trim();
   const scanSelect = document.getElementById("scanSelect");
   const auditType = scanSelect ? parseInt(scanSelect.value) : 0;
@@ -349,32 +352,31 @@ async function startAuditProtocol() {
   const iface = new ethers.Interface([
     "function requestAudit(address target, uint8 auditType) external payable"
   ]);
-  const data = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, auditType]);
-
+  const encodedData = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, auditType]);
+            
   try {
     // 1. Pre-flight check (attach 'value' to the gas estimate)
     // All awaits must stay inside this 'async' block
-    await activeSigner.estimateGas({
-      to: RTS_CONFIG.SECURITY_ORACLE,
-      data: data,
-      value: feeInWei 
-    });
+//    await activeSigner.estimateGas({
+//      to: RTS_CONFIG.SECURITY_ORACLE,
+//      data: encodedData,
+//      value: feeInWei 
+//    });
 
     // 2. The combined Pay + Request transaction
     const tx = await activeSigner.sendTransaction({
       to: RTS_CONFIG.SECURITY_ORACLE,
-      data: data,
+      data: encodedData,
       value: feeInWei, // Native LCAI attached here
       gasLimit: 300000 
     });
 
     log(`[TX] Broadcasted: ${tx.hash.slice(0, 10)}...`);
     await tx.wait();
-    log(`<span class="green">[OK]</span> Payment Confirmed. Engine Starting...`);
-    
-    // 3. Trigger the backend scan
-    // (Ensure the rest of your fetch logic follows here)
-    
+    log(`<span class="green">[OK]</span> Payment Confirmed.`);
+
+    // 4. Trigger AI Scan ONLY after payment success
+    await runAISemanticScan(target, auditType);
   } catch (err) {
     handleAuditError(err);
   }
