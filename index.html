@@ -554,7 +554,7 @@ async function executeSyntacticScan(address, source, isVerified, aiReport = "") 
   // --- THE FIX: AI CONFIDENCE CHECK ---
   // If the AIVM report contains critical keywords, trigger the cap
   const reportCheck = aiReport.toUpperCase();
-  if (reportCheck.includes("CRITICAL") || reportCheck.includes("HIGH RISK") || reportCheck.includes("VULNERABLE")) {
+  if (reportCheck.includes("CRITICAL") {
     criticalVulnerability = true;
   }
 
