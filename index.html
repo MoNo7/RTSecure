@@ -335,15 +335,23 @@ async function updateTickers() {
 
 // --- Main Audit Pipeline ---
 async function startAuditProtocol() {
-  // 1. Reset UI & Guard
+  if (!activeSigner) return log("Connect Wallet First");
+  // 1. UI Reset & Guard
   const logContainer = document.getElementById('term');
   if (logContainer) logContainer.innerHTML = ''; 
   log("[SYS] Initializing RTSecure AI Engine...");
 
   if (!activeSigner) {
-    log("<span style='color:orange'>[WARN]</span> Wallet not connected.");
+    log("<span style='color:orange'>[WARN]</span> Please connect your wallet.");
     return;
   }
+
+  // 2. Setup Oracle Contract Instance for Dynamic Fee Fetching
+  const oracle = new ethers.Contract(
+    RTS_CONFIG.SECURITY_ORACLE, 
+    ["function staticFee() view returns (uint256)", "function deepFee() view returns (uint256)"], 
+    activeSigner
+  );
 
   // 2. Capture Inputs correctly
   const target = document.getElementById('targetAddr').value.trim();
@@ -363,7 +371,10 @@ async function startAuditProtocol() {
     log(`[PAYMENT] Action: Sending ${feeAmount} Native LCAI to Oracle...`);
     
     const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external payable"]);
-    const encodedPayload = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, auditType]);
+    const encodedPayload = iface.encodeFunctionData("requestAudit", [
+      target || ethers.ZeroAddress, 
+      auditType
+    ]);
 
     const tx = await activeSigner.sendTransaction({
       to: RTS_CONFIG.SECURITY_ORACLE,
@@ -400,7 +411,7 @@ async function startAuditProtocol() {
     const finalSource = scanData.sourceCode || pastedCode || "";
     
     // Run the local syntactic check for the UI logs
-    await executeSyntacticScan(target || "PastedCode", finalSource, effectiveVerification);
+    await executeSyntacticScan(target || "PastedCode", finalSource, effectiveVerification, scanData.report);
 
     if (auditType === 1) {
       // Deep Audit: Generate PDF and show summary
@@ -470,6 +481,8 @@ log("<span style='color:orange'>[WARN]</span> External API check skipped.");
 // --- Tier 1: Syntactic Static Scan (Production) ---
 // --- Updated Syntactic Scan with Explanations ---
 async function executeSyntacticScan(address, source, isVerified) {
+let issuesFound = 0;
+let criticalVulnerability = false;
 log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
 
 const isDecompiled = !isVerified && source.includes("DECOMPILED BYTECODE");
@@ -524,6 +537,34 @@ color = "var(--accent-green)";
 log(`> ${item.name}: <span style="color:${color}">${status}</span>`);
 log(`<span style="font-size:0.75rem; opacity:0.8; padding-left:20px;">${explanation}</span>`);
 }
+            if (code.includes("selfdestruct") || code.includes("tx.origin")) {
+                issuesFound += 30;
+                criticalVulnerability = true; 
+              }
+            
+              // 2. Add the "Confidence Logic"
+              // If the AIVM report contains keywords like "CRITICAL" or "VULNERABLE",
+              // we force a confidence cap.
+              const aivmReport = document.getElementById('term').innerText; 
+              if (aivmReport.toUpperCase().includes("CRITICAL") || aivmReport.toUpperCase().includes("HIGH RISK")) {
+                criticalVulnerability = true;
+              }
+            
+              // 3. Calculate Final Score
+              let score = 100 - issuesFound;
+              
+              // THE FIX: If any critical is found, the score can NEVER exceed 40%
+              if (criticalVulnerability && score > 40) {
+                score = 40; 
+                log("<span style='color:red'>[WARN]</span> Critical vulnerabilities detected. Security Score capped at 40%.");
+              }
+            
+              // Update the UI Meter
+              const scoreEl = document.getElementById('securityScore');
+              if (scoreEl) {
+                scoreEl.innerText = `${score}%`;
+                scoreEl.style.color = score < 50 ? "var(--accent-red)" : "var(--accent-green)";
+              }           
 }
 
 // --- LightScan API Integration ---
