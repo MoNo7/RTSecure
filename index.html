@@ -320,7 +320,7 @@ async function updateTickers() {
    activeSigner = await provider.getSigner();
    document.getElementById('walletDisplay').innerText = `[ ${accounts[0].slice(0,6)}... ]`;
    log(`[AUTH] Linked: ${accounts[0]}`);
-   updateAdminStats();
+   inStats();
   }
 
  function setupEventListener() {
@@ -809,52 +809,43 @@ updateAdminStats();
 }
 
 async function updateAdminStats() {
-if (!activeSigner) return;
-const ORACLE_ADDR = RTS_CONFIG.SECURITY_ORACLE;
+  if (!activeSigner) return;
+  const ORACLE_ADDR = RTS_CONFIG.SECURITY_ORACLE;
 
-try {
-const abi = [
-"function staticFee() view returns (uint256)",
-"function deepFee() view returns (uint256)",
-"function balanceOf(address) view returns (uint256)",
-"function owner() view returns (address)"
-];
-const code = await activeSigner.provider.getCode(RTS_CONFIG.SECURITY_ORACLE);
-if (code === "0x" || code === "0x0") {
-document.getElementById('currentOwnerAddr').innerText = "Wrong Contract Address";
-return;
-}
+  try {
+    const abi = [
+      "function staticFee() view returns (uint256)",
+      "function deepFee() view returns (uint256)",
+      "function owner() view returns (address)"
+    ];
 
-const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, abi, activeSigner);
-const oracle = new ethers.Contract(RTS_CONFIG.SECURITY_ORACLE, abi, activeSigner);
+    const oracle = new ethers.Contract(ORACLE_ADDR, abi, activeSigner);
 
-// Fetch current fees from the blockchain
-const sFee = await oracle.staticFee();
-const dFee = await oracle.deepFee();
+    // 1. Fetch current fees and owner
+    const [sFee, dFee, owner] = await Promise.all([
+      oracle.staticFee(),
+      oracle.deepFee(),
+      oracle.owner()
+    ]);
 
-// Update local config so 'startAuditProtocol' is always accurate
-RTS_CONFIG.FEES.STATIC = sFee;
-RTS_CONFIG.FEES.REDTEAM = dFee;
+    // Update UI
+    document.getElementById('newStaticFee').placeholder = ethers.formatUnits(sFee, 18);
+    document.getElementById('newDeepFee').placeholder = ethers.formatUnits(dFee, 18);
+    document.getElementById('currentOwnerAddr').innerText = owner;
 
-// Update UI Placeholders to show current on-chain cost
-document.getElementById('newStaticFee').placeholder = ethers.formatUnits(sFee, 18);
-document.getElementById('newDeepFee').placeholder = ethers.formatUnits(dFee, 18);
+    // 2. FIXED: Fetch Native Treasury Balance
+    // We get the balance of the Oracle contract address directly from the provider
+    const treasuryBalance = await activeSigner.provider.getBalance(ORACLE_ADDR);
+    
+    const balanceEl = document.getElementById('adminBalance');
+    if (balanceEl) {
+      balanceEl.innerText = `${parseFloat(ethers.formatEther(treasuryBalance)).toFixed(2)} LCAI`;
+    }
 
-try{
-const b = await token.balanceOf(ORACLE_ADDR);
-document.getElementById('adminBalance').innerText = `${ethers.formatEther(b)} LCAI`;
-} catch (balErr) {
-console.warn("Balance check failed, token address might be wrong.");
-document.getElementById('adminBalance').innerText = "0.00 LCAI";
-}
-
-const owner = await oracle.owner();
-document.getElementById('currentOwnerAddr').innerText = owner;
-document.getElementById('currentOwnerAddr').style.color = "var(--accent-blue)";
-} catch (e) {
-console.error("Sync Error:", e);
-document.getElementById('currentOwnerAddr').innerText = "Sync Failed";
-}
+  } catch (e) {
+    console.error("Admin Sync Error:", e);
+    document.getElementById('currentOwnerAddr').innerText = "Sync Failed";
+  }
 }
 
 // Function to perform the transfer
