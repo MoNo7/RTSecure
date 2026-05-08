@@ -422,12 +422,11 @@ log(`<div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 10px
                    </div>`);
 }
 
-} catch (e) {
 // Detailed error logging for reverts
 const errMsg = e.reason || e.message;
 log(`<span style='color:red'>[FAIL]</span> ${errMsg.includes("rejected") ? "User denied transaction." : "Transaction reverted: " + errMsg}`);
 console.error("Audit Protocol Error:", e);
-}
+
 }
 
 // Add this to handle the buttons
