@@ -366,7 +366,7 @@ async function startAuditProtocol() {
 
   try {
 
-  //const feeAmount = (auditType === 1) ? "50" : "10";
+  const feeAmount = (auditType === 1) ? "50" : "10";
   const feeInWei = ethers.parseUnits(feeAmount, 18);
     // --- STAGE 1: Blockchain Payment ---
     log(`[PAYMENT] Action: Sending ${feeAmount} Native LCAI to Oracle...`);
