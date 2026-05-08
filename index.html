@@ -246,7 +246,7 @@ LCAI: <span id="lcaiTicker">$0.00</span>
 const RTS_CONFIG = {
 LCAI_TOKEN: "0x9cA8530CA349c966Fe9ef903Df17a75B8A778927",
 WETH_TOKEN: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-SECURITY_ORACLE: "0xBca61b5E79b97Fa5C913b484A5656c5b3E13E276",
+SECURITY_ORACLE: "0x38eA5B0A453E64FB8FF4aDf80B8DEF7Fc29E0640",
 FEES: {
 
             STATIC: ethers.parseUnits("10", 18), // 10 LCAI
@@ -278,18 +278,19 @@ label.innerText = score > 40 ? `${score}% THREAT` : `${score}% SAFE`;
 
 
 async function updateLcaiBalance(userAddress) {
-try {
-const tokenAbi = ["function balanceOf(address) view returns (uint256)"];
-const provider = new ethers.BrowserProvider(window.ethereum);
-const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, tokenAbi, provider);
-const balance = await token.balanceOf(userAddress);
-
-const el = document.getElementById('userLcaiBalance');
-el.innerText = `${parseFloat(ethers.formatUnits(balance, 18)).toFixed(2)} LCAI`;
-el.style.display = 'inline';
-} catch (e) {
-console.error("Balance sync failed");
-}
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    // Get native balance instead of calling a contract
+    const balance = await provider.getBalance(userAddress); 
+    
+    const el = document.getElementById('userLcaiBalance');
+    if (el) {
+      el.innerText = `${parseFloat(ethers.formatUnits(balance, 18)).toFixed(2)} LCAI`;
+      el.style.display = 'inline';
+    }
+  } catch (e) {
+    console.error("Native balance sync failed", e);
+  }
 }
 
 async function updateTickers() {
@@ -338,46 +339,54 @@ const target = document.getElementById('targetAddr').value.trim();
 const type = parseInt(document.getElementById('scanSelect').value);
 const pastedCode = document.getElementById('unverifiedCode').value.trim();
 const isPasteMode = document.getElementById('unverifiedCode').style.display === 'block';
+// 1. Get the current value from your dropdown
+// (Replace "auditDropdown" with the actual ID of your <select> element)
+const auditType = document.getElementById("auditDropdown").value; 
+// 2. Determine the fee based on the selection (0 = Standard, 1 = Deep)
+const feeAmount = (auditType === "1") ? "50" : "10";
+const feeInWei = ethers.parseUnits(feeAmount, 18);
+  log(`[PAYMENT] Action: Sending ${feeAmount} Native LCAI to Oracle...`);
 
-if (!activeSigner) return log("<span style='color:red'>[ERR]</span> Connect wallet first.");
+  // New Interface: requestAudit is now 'payable'
+  const iface = new ethers.Interface([
+    "function requestAudit(address target, uint8 auditType) external payable"
+  ]);
+  const data = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, auditType]);
 
-document.getElementById('term').innerHTML = ""; 
-log(`<span class="green">[SYS]</span> Initializing RTSecure AI Engine for ${isPasteMode ? 'Manual Scan' : 'On-Chain Address'}...`);
+  try {
+    // 1. Pre-flight check (attach 'value' to the estimate)
+    await activeSigner.estimateGas({
+      to: RTS_CONFIG.SECURITY_ORACLE,
+      data: data,
+      value: feeInWei 
+    });
 
-try {
-        const token = new ethers.Contract(RTS_CONFIG.LCAI_TOKEN, [
-            "function approve(address,uint256) public returns (bool)",
-            "function allowance(address,address) view returns (uint256)",
-            "function balanceOf(address) view returns (uint256)"
-        ], activeSigner);
+    // 2. The combined Pay + Request transaction
+    const tx = await activeSigner.sendTransaction({
+      to: RTS_CONFIG.SECURITY_ORACLE,
+      data: data,
+      value: feeInWei, // The 10 or 50 LCAI is sent here
+      gasLimit: 300000 
+    });
 
-        const fee = (type === 0) ? RTS_CONFIG.FEES.STATIC : RTS_CONFIG.FEES.REDTEAM;
-        const userAddr = await activeSigner.getAddress();
+    log(`[TX] Broadcasted: ${tx.hash.slice(0, 10)}...`);
+    await tx.wait();
+    log(`<span class="green">[OK]</span> Payment Confirmed. Engine Starting...`);
+    
+  } catch (err) {
+    handleAuditError(err);
+  }
+}
 
-            // 1. Check Balance Safely
-            let balance = 0n;
-            try {
-                balance = await token.balanceOf(userAddr);
-                log(`[SYS] Verified Balance: ${ethers.formatUnits(balance, 18)} LCAI`);
-            } catch (e) {
-                console.warn("Token contract not found at address. Proceeding anyway...");
-                log("<span style='color:orange'>[WARN]</span> Balance check skipped (Contract not found).");
-            }
-       // 2. Check and Handle Allowance Safely
-        let allowance = 0n;
-        try {
-            allowance = await token.allowance(userAddr, RTS_CONFIG.SECURITY_ORACLE);
-        } catch (e) {
-            log("[WARN] Allowance check failed. Forcing fresh approval...");
-        }
+
 
         if (allowance < fee) {
             log(`[PAYMENT] Target Oracle: ${RTS_CONFIG.SECURITY_ORACLE}`);
             log(`[PAYMENT] Status: No permission found for this new contract.`);
-            log(`[PAYMENT] Action: Requesting 10 LCAI Approval...`);
+            log(`[PAYMENT] Action: Requesting ${feeAmount} LCAI Approval...`);
             
-            const appTx = await token.approve(RTS_CONFIG.SECURITY_ORACLE, fee);
-            await appTx.wait();
+            const approveTx = await tokenContract.approve(RTS_CONFIG.SECURITY_ORACLE, feeInWei);
+            await approveTx.wait();
             log("<span class='green'>[OK]</span> Permission granted to new Oracle.");
         }
 
