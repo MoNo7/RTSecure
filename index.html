@@ -192,7 +192,6 @@ color: #8b949e;
 <div class="stats">
 NETWORK: <span class="green"><span class="stat-online">● ONLINE</span></span>
 
-LCAI: <span id="lcaiTicker">$0.00</span>
 <span id="userLcaiBalance" style="color:var(--accent-green); margin-left:15px; font-weight:bold; display:none;">0.00 LCAI</span>
 </div>
 <div id="walletDisplay" style="font-size: 0.8rem; cursor:pointer; color:var(--accent-blue);">
@@ -310,7 +309,7 @@ async function updateTickers() {
 }
 
     // Run on load and every 60 seconds
-    updateTickers();
+    //updateTickers();
     setInterval(updateTickers, 60000);
  
   async function connectWallet() {
@@ -320,7 +319,7 @@ async function updateTickers() {
    activeSigner = await provider.getSigner();
    document.getElementById('walletDisplay').innerText = `[ ${accounts[0].slice(0,6)}... ]`;
    log(`[AUTH] Linked: ${accounts[0]}`);
-   inStats();
+   updateAdminStats();
   }
 
  function setupEventListener() {
@@ -346,13 +345,6 @@ async function startAuditProtocol() {
     return;
   }
 
-  // 2. Setup Oracle Contract Instance for Dynamic Fee Fetching
-  const oracle = new ethers.Contract(
-    RTS_CONFIG.SECURITY_ORACLE, 
-    ["function staticFee() view returns (uint256)", "function deepFee() view returns (uint256)"], 
-    activeSigner
-  );
-
   // 2. Capture Inputs correctly
   const target = document.getElementById('targetAddr').value.trim();
   const scanSelect = document.getElementById("scanSelect");
@@ -363,18 +355,24 @@ async function startAuditProtocol() {
   const isPasteMode = codeArea && codeArea.style.display === 'block';
   const pastedCode = codeArea ? codeArea.value : "";
 
-  const feeAmount = (auditType === 1) ? "50" : "10";
-  const feeInWei = ethers.parseUnits(feeAmount, 18);
+  // 2. Setup Oracle Contract Instance for Dynamic Fee Fetching
+  const oracle = new ethers.Contract(
+    RTS_CONFIG.SECURITY_ORACLE, 
+    ["function staticFee() view returns (uint256)", "function deepFee() view returns (uint256)"], 
+    activeSigner
+  );          
+
+
 
   try {
+
+  const feeAmount = (auditType === 1) ? "50" : "10";
+  const feeInWei = ethers.parseUnits(feeAmount, 18);
     // --- STAGE 1: Blockchain Payment ---
     log(`[PAYMENT] Action: Sending ${feeAmount} Native LCAI to Oracle...`);
     
     const iface = new ethers.Interface(["function requestAudit(address target, uint8 auditType) external payable"]);
-    const encodedPayload = iface.encodeFunctionData("requestAudit", [
-      target || ethers.ZeroAddress, 
-      auditType
-    ]);
+    const encodedPayload = iface.encodeFunctionData("requestAudit", [target || ethers.ZeroAddress, auditType]);
 
     const tx = await activeSigner.sendTransaction({
       to: RTS_CONFIG.SECURITY_ORACLE,
@@ -484,6 +482,7 @@ async function executeSyntacticScan(address, source, isVerified) {
 let issuesFound = 0;
 let criticalVulnerability = false;
 log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
+            
 
 const isDecompiled = !isVerified && source.includes("DECOMPILED BYTECODE");
 const isEmpty = !source || source.trim().length < 10;
