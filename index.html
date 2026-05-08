@@ -407,6 +407,17 @@ async function startAuditProtocol() {
     log(`[INFO] Sourcing Logic: <span style="color:white; background:#333; padding:2px 5px;">${sourceStatus}</span>`);
     
     const finalSource = scanData.sourceCode || pastedCode || "";
+
+    // 1. Run the scan and capture the CAPPED score
+    const finalCalculatedScore = await executeSyntacticScan(
+      target || "PastedCode", 
+      finalSource, 
+      isPasteMode || scanData.isVerified, 
+      scanData.report
+    );
+
+      // 2. INJECT the capped score into scanData so the PDF sees it
+    scanData.confidenceScore = finalCalculatedScore;
     
     // Run the local syntactic check for the UI logs
     await executeSyntacticScan(target || "PastedCode", finalSource, effectiveVerification, scanData.report);
@@ -461,115 +472,116 @@ btnCode.style.opacity = "0.5";
 }
 
 async function executeQuickApiCheck(address) {
-log("[SYS] Connecting to GoPlus Security API...");
-try {
-const response = await fetch(`https://api.gopluslabs.io/api/v1/token_security/504?contract_addresses=${address}`);
-const data = await response.json();
-const result = data.result[address.toLowerCase()];
-
-if (result) {
-log(`> Ownership Renounced: ${result.is_proxy === "1" ? "WARN" : "PASS"}`);
-log(`> Honeypot Risk: ${result.is_honeypot === "1" ? "DANGER" : "PASS"}`);
-log(`> Self-Destruct Risk: ${result.selfdestruct === "1" ? "WARN" : "PASS"}`);
-}
-} catch (e) {
-log("<span style='color:orange'>[WARN]</span> External API check skipped.");
-}
+            log("[SYS] Connecting to GoPlus Security API...");
+            try {
+                        const response = await fetch(`https://api.gopluslabs.io/api/v1/token_security/504?contract_addresses=${address}`);
+                        const data = await response.json();
+                        const result = data.result[address.toLowerCase()];
+                        
+                        if (result) {
+                                    log(`> Ownership Renounced: ${result.is_proxy === "1" ? "WARN" : "PASS"}`);
+                                    log(`> Honeypot Risk: ${result.is_honeypot === "1" ? "DANGER" : "PASS"}`);
+                                    log(`> Self-Destruct Risk: ${result.selfdestruct === "1" ? "WARN" : "PASS"}`);
+                        }
+            } catch (e) {
+                        log("<span style='color:orange'>[WARN]</span> External API check skipped.");
+            }
 }
 // --- Tier 1: Syntactic Static Scan (Production) ---
-// --- Updated Syntactic Scan with Explanations ---
 async function executeSyntacticScan(address, source, isVerified, aiReport = "") {
-let issuesFound = 0;
-let criticalVulnerability = false;
-log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
-            
+  let issuesFound = 0;
+  let criticalVulnerability = false;
+  log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
 
-const isDecompiled = !isVerified && source.includes("DECOMPILED BYTECODE");
-const isEmpty = !source || source.trim().length < 10;
+  const isDecompiled = !isVerified && source.includes("DECOMPILED BYTECODE");
+  const isEmpty = !source || source.trim().length < 10;
 
-const findings = [
-{ 
-name: "Phishing Vector (tx.origin)", 
-detected: /tx\.origin/.test(source),
-pass: "You are correctly using msg.sender for ownership checks.",
-fail: "CRITICAL: tx.origin detected. An attacker can drain this contract via a phishing proxy."
-},
-{ 
-name: "Low-Level Call (delegatecall)", 
-detected: /delegatecall/.test(source),
-pass: "No dangerous external delegate-logic was detected.",
-fail: "INFO: delegatecall found. Ensure the target contract is verified and immutable."
-},
-{ 
-name: "Deprecated Opcode (selfdestruct)", 
-detected: /selfdestruct|suicide/.test(source),
-pass: "The contract lacks the risk of sudden permanent termination.",
-fail: "WARN: selfdestruct detected. This contract can be permanently deleted from the chain."
-},
-{ 
-name: "Unprotected Assembly", 
-detected: /assembly\s*{/.test(source),
-pass: "No 'black box' assembly blocks detected; logic is fully transparent.",
-fail: "INFO: Inline assembly used. This bypasses many Solidity safety checks."
-}
-];
+  const findings = [
+    { 
+      name: "Phishing Vector (tx.origin)", 
+      detected: /tx\.origin/.test(source),
+      pass: "You are correctly using msg.sender for ownership checks.",
+      fail: "CRITICAL: tx.origin detected. An attacker can drain this contract via a phishing proxy.",
+      penalty: 30
+    },
+    { 
+      name: "Low-Level Call (delegatecall)", 
+      detected: /delegatecall/.test(source),
+      pass: "No dangerous external delegate-logic was detected.",
+      fail: "INFO: delegatecall found. Ensure the target contract is verified and immutable.",
+      penalty: 15
+    },
+    { 
+      name: "Deprecated Opcode (selfdestruct)", 
+      detected: /selfdestruct|suicide/.test(source),
+      pass: "The contract lacks the risk of sudden permanent termination.",
+      fail: "WARN: selfdestruct detected. This contract can be permanently deleted from the chain.",
+      penalty: 30
+    },
+    { 
+      name: "Unprotected Assembly", 
+      detected: /assembly\s*{/.test(source),
+      pass: "No 'black box' assembly blocks detected; logic is fully transparent.",
+      fail: "INFO: Inline assembly used. This bypasses many Solidity safety checks.",
+      penalty: 10
+    }
+  ];
 
-for (const item of findings) {
-await new Promise(r => setTimeout(r, 500));
-//        const status = item.detected ? "<span style='color:orange'>[WARN]</span>" : "<span class='green'>[PASS]</span>";
-const explanation = item.detected ? item.fail : item.pass;
-let status;
-let color;
+  // Process findings and accumulate penalties
+  for (const item of findings) {
+    await new Promise(r => setTimeout(r, 400));
+    const explanation = item.detected ? item.fail : item.pass;
+    let status, color;
 
-if (item.detected) {
-status = "[WARN]";
-color = "orange";
-} else if (isDecompiled || isEmpty) {
-// RELIABILITY FIX: Don't give a Green PASS for unverified code
-status = "[UNVERIFIED]";
-color = "#8b949e"; 
-} else {
-status = "[PASS]";
-color = "var(--accent-green)";
-}
+    if (item.detected) {
+      status = "[WARN]";
+      color = "orange";
+      issuesFound += item.penalty;
+      // If tx.origin or selfdestruct are found, mark as critical
+      if (item.penalty >= 30) criticalVulnerability = true;
+    } else if (isDecompiled || isEmpty) {
+      status = "[UNVERIFIED]";
+      color = "#8b949e"; 
+    } else {
+      status = "[PASS]";
+      color = "var(--accent-green)";
+    }
 
-log(`> ${item.name}: <span style="color:${color}">${status}</span>`);
-log(`<span style="font-size:0.75rem; opacity:0.8; padding-left:20px;">${explanation}</span>`);
-}
-            if (source.includes("selfdestruct") || source.includes("tx.origin")) {
-                issuesFound += 30;
-                criticalVulnerability = true; 
-              }
-            
-              // 2. Add the "Confidence Logic"
-              // If the AIVM report contains keywords like "CRITICAL" or "VULNERABLE",
-              // we force a confidence cap.
-              const aivmReport = document.getElementById('term').innerText; 
-              if (aivmReport.toUpperCase().includes("CRITICAL") || aivmReport.toUpperCase().includes("HIGH RISK")) {
-                criticalVulnerability = true;
-              }
+    log(`> ${item.name}: <span style="color:${color}">${status}</span>`);
+    log(`<span style="font-size:0.75rem; opacity:0.8; padding-left:20px;">${explanation}</span>`);
+  }
 
-            // --- THE FIX: CAP CONFIDENCE AT 40% IF CRITICAL FOUND ---
-              const reportCheck = aiReport.toUpperCase();
-              if (reportCheck.includes("CRITICAL") || reportCheck.includes("HIGH RISK")) {
-                criticalVulnerability = true;
-              }
-            
-              // 3. Calculate Final Score
-              let score = 100 - issuesFound;
-              
-              // THE FIX: If any critical is found, the score can NEVER exceed 40%
-              if (criticalVulnerability && score > 40) {
-                score = 40; 
-                log("<span style='color:red'>[WARN]</span> Critical vulnerabilities detected. Security Score capped at 40%.");
-              }
-            
-              // Update the UI Meter
-              const scoreEl = document.getElementById('securityScore');
-              if (scoreEl) {
-                scoreEl.innerText = `${score}%`;
-                scoreEl.style.color = score < 50 ? "var(--accent-red)" : "var(--accent-green)";
-              }           
+  // --- THE FIX: AI CONFIDENCE CHECK ---
+  // If the AIVM report contains critical keywords, trigger the cap
+  const reportCheck = aiReport.toUpperCase();
+  if (reportCheck.includes("CRITICAL") || reportCheck.includes("HIGH RISK") || reportCheck.includes("VULNERABLE")) {
+    criticalVulnerability = true;
+  }
+
+  // Calculate Score
+  let score = 100 - issuesFound;
+  
+  // Apply Absolute Cap
+  if (criticalVulnerability && score > 40) {
+    score = 40; 
+    log("<span style='color:red'>[WARN]</span> Critical vulnerabilities detected. Security Score capped at 40%.");
+  } else if (score < 0) {
+    score = 0;
+  }
+
+  // Update the UI Meter
+  const scoreEl = document.getElementById('securityScore');
+  const riskFill = document.getElementById('riskFill'); // For the bar
+  if (scoreEl) {
+    scoreEl.innerText = `${score}%`;
+    scoreEl.style.color = score < 50 ? "var(--accent-red)" : "var(--accent-green)";
+  }
+  if (riskFill) {
+    riskFill.style.width = `${score}%`;
+    riskFill.style.background = score < 50 ? "var(--accent-red)" : "var(--accent-green)";
+  }
+
+  return score; // CRITICAL: This allows startAuditProtocol to capture the score
 }
 
 // --- LightScan API Integration ---
