@@ -366,7 +366,7 @@ async function startAuditProtocol() {
 
   try {
 
-  const feeAmount = (auditType === 1) ? "50" : "10";
+  //const feeAmount = (auditType === 1) ? "50" : "10";
   const feeInWei = ethers.parseUnits(feeAmount, 18);
     // --- STAGE 1: Blockchain Payment ---
     log(`[PAYMENT] Action: Sending ${feeAmount} Native LCAI to Oracle...`);
@@ -400,12 +400,6 @@ async function startAuditProtocol() {
     });
 
     const scanData = await response.json();
-    
-    // Process Results
-    const effectiveVerification = isPasteMode ? true : (scanData.isVerified || false);
-    const sourceStatus = isPasteMode ? "Manual Code Input" : (scanData.isVerified ? "Verified Source" : "Unverified Bytecode");
-    log(`[INFO] Sourcing Logic: <span style="color:white; background:#333; padding:2px 5px;">${sourceStatus}</span>`);
-    
     const finalSource = scanData.sourceCode || pastedCode || "";
 
     // 1. Run the scan and capture the CAPPED score
@@ -420,7 +414,7 @@ async function startAuditProtocol() {
     scanData.confidenceScore = finalCalculatedScore;
     
     // Run the local syntactic check for the UI logs
-    await executeSyntacticScan(target || "PastedCode", finalSource, effectiveVerification, scanData.report);
+    //await executeSyntacticScan(target || "PastedCode", finalSource, effectiveVerification, scanData.report);
 
     if (auditType === 1) {
       // Deep Audit: Generate PDF and show summary
