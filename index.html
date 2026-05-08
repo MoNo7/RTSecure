@@ -478,7 +478,7 @@ log("<span style='color:orange'>[WARN]</span> External API check skipped.");
 }
 // --- Tier 1: Syntactic Static Scan (Production) ---
 // --- Updated Syntactic Scan with Explanations ---
-async function executeSyntacticScan(address, source, isVerified) {
+async function executeSyntacticScan(address, source, isVerified, aiReport = "") {
 let issuesFound = 0;
 let criticalVulnerability = false;
 log("<strong>[STAGE 1] Syntactic Static Scan (Local Core)</strong>");
@@ -536,7 +536,7 @@ color = "var(--accent-green)";
 log(`> ${item.name}: <span style="color:${color}">${status}</span>`);
 log(`<span style="font-size:0.75rem; opacity:0.8; padding-left:20px;">${explanation}</span>`);
 }
-            if (code.includes("selfdestruct") || code.includes("tx.origin")) {
+            if (source.includes("selfdestruct") || source.includes("tx.origin")) {
                 issuesFound += 30;
                 criticalVulnerability = true; 
               }
@@ -546,6 +546,12 @@ log(`<span style="font-size:0.75rem; opacity:0.8; padding-left:20px;">${explanat
               // we force a confidence cap.
               const aivmReport = document.getElementById('term').innerText; 
               if (aivmReport.toUpperCase().includes("CRITICAL") || aivmReport.toUpperCase().includes("HIGH RISK")) {
+                criticalVulnerability = true;
+              }
+
+            // --- THE FIX: CAP CONFIDENCE AT 40% IF CRITICAL FOUND ---
+              const reportCheck = aiReport.toUpperCase();
+              if (reportCheck.includes("CRITICAL") || reportCheck.includes("HIGH RISK")) {
                 criticalVulnerability = true;
               }
             
