@@ -401,6 +401,8 @@ async function startAuditProtocol() {
 
     const scanData = await response.json();
     const finalSource = scanData.sourceCode || pastedCode || "";
+    // Explicitly determine verification status
+    const verifiedStatus = isPasteMode ? true : (scanData.isVerified || false);
 
     // 1. Run the scan and capture the CAPPED score
     const finalCalculatedScore = await executeSyntacticScan(
@@ -412,6 +414,7 @@ async function startAuditProtocol() {
 
       // 2. INJECT the capped score into scanData so the PDF sees it
     scanData.confidenceScore = finalCalculatedScore;
+    scanData.isVerified = verifiedStatus; // Sync for PDF Badge logic
     
     // Run the local syntactic check for the UI logs
     //await executeSyntacticScan(target || "PastedCode", finalSource, effectiveVerification, scanData.report);
@@ -533,7 +536,7 @@ async function executeSyntacticScan(address, source, isVerified, aiReport = "") 
       issuesFound += item.penalty;
       // If tx.origin or selfdestruct are found, mark as critical
       if (item.penalty >= 30) criticalVulnerability = true;
-    } else if (isDecompiled || isEmpty) {
+    } else if (!isVerified && (isDecompiled || isEmpty)) {
       status = "[UNVERIFIED]";
       color = "#8b949e"; 
     } else {
@@ -545,37 +548,33 @@ async function executeSyntacticScan(address, source, isVerified, aiReport = "") 
     log(`<span style="font-size:0.75rem; opacity:0.8; padding-left:20px;">${explanation}</span>`);
   }
 
-  // --- THE FIX: AI CONFIDENCE CHECK ---
-  // If the AIVM report contains critical keywords, trigger the cap
-  const reportCheck = aiReport.toUpperCase();
-  if (reportCheck.includes("CRITICAL")) {
+const reportCheck = (aiReport || "").toUpperCase();
+  
+  // We only trigger criticalVulnerability if it's a confirmed exploit finding
+  if (reportCheck.includes("[CRITICAL]") || reportCheck.includes("CRITICAL VULNERABILITY")) {
     criticalVulnerability = true;
   }
 
-  // Calculate Score
   let score = 100 - issuesFound;
-  
-  // Apply Absolute Cap
-  if (criticalVulnerability && score > 40) {
+
+  // If Verified and no vulnerabilities detected, FORCE 100%
+  if (isVerified && !criticalVulnerability && issuesFound === 0) {
+    score = 100;
+  } 
+  // Otherwise, if a critical is found, apply the cap
+  else if (criticalVulnerability && score > 40) {
     score = 40; 
     log("<span style='color:red'>[WARN]</span> Critical vulnerabilities detected. Security Score capped at 40%.");
-  } else if (score < 0) {
-    score = 0;
   }
 
-  // Update the UI Meter
-  const scoreEl = document.getElementById('securityScore');
-  const riskFill = document.getElementById('riskFill'); // For the bar
-  if (scoreEl) {
-    scoreEl.innerText = `${score}%`;
-    scoreEl.style.color = score < 50 ? "var(--accent-red)" : "var(--accent-green)";
-  }
-  if (riskFill) {
-    riskFill.style.width = `${score}%`;
-    riskFill.style.background = score < 50 ? "var(--accent-red)" : "var(--accent-green)";
+  // Update UI Meter
+  const label = document.getElementById('riskScoreLabel');
+  if (label) {
+    label.innerText = `${score}% ${score < 50 ? 'THREAT' : 'SAFE'}`;
+    label.style.color = score < 50 ? "#ff4444" : "var(--accent-green)";
   }
 
-  return score; // CRITICAL: This allows startAuditProtocol to capture the score
+  return score;
 }
 
 // --- LightScan API Integration ---
