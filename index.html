@@ -550,21 +550,21 @@ async function executeSyntacticScan(address, source, isVerified, aiReport = "") 
 
 const reportCheck = (aiReport || "").toUpperCase();
   
-  // We only trigger criticalVulnerability if it's a confirmed exploit finding
+  // Only flag true vulnerabilities if the AIVM explicitly tagged them as a finding
   if (reportCheck.includes("[CRITICAL]") || reportCheck.includes("CRITICAL VULNERABILITY")) {
     criticalVulnerability = true;
   }
 
   let score = 100 - issuesFound;
 
-  // If Verified and no vulnerabilities detected, FORCE 100%
+  // If the contract is verified and no security flags triggered, force a clean 100%
   if (isVerified && !criticalVulnerability && issuesFound === 0) {
     score = 100;
   } 
-  // Otherwise, if a critical is found, apply the cap
+  // If a real AI critical vulnerability was caught, apply the 40% cap safely
   else if (criticalVulnerability && score > 40) {
     score = 40; 
-    log("<span style='color:red'>[WARN]</span> Critical vulnerabilities detected. Security Score capped at 40%.");
+    log("<span style='color:red'>[WARN]</span> True critical vulnerabilities verified by AIVM. Score capped at 40%.");
   }
 
   // Update UI Meter
@@ -675,7 +675,7 @@ doc.text("MiMo RTSecured Audit", 32, 14.5);
 doc.setTextColor(100, 100, 100);
 doc.setFontSize(9);
 doc.text(`Target: ${address}`, 20, 30);
-doc.text(`Methodology: AIVM Neural-Llama-3-70B / Slither Static Core`, 20, 35);
+doc.text(`Methodology: AIVM Neural-Llama-3-8B / Slither Static Core`, 20, 35);
 
 const score = data.confidenceScore || 0;
 doc.setTextColor(score > 80 ? 63 : 200, 185, 80);
