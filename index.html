@@ -408,7 +408,7 @@ async function startAuditProtocol() {
     const finalCalculatedScore = await executeSyntacticScan(
       target || "PastedCode", 
       finalSource, 
-      isPasteMode || scanData.isVerified, 
+      verifiedStatus, 
       scanData.report
     );
 
@@ -555,16 +555,22 @@ const reportCheck = (aiReport || "").toUpperCase();
     criticalVulnerability = true;
   }
 
-  let score = 100 - issuesFound;
+let score = 100 - issuesFound;
 
-  // If the contract is verified and no security flags triggered, force a clean 100%
-  if (isVerified && !criticalVulnerability && issuesFound === 0) {
+  // If the contract is clean but simply unverified bytecode, give it an accurate 70% 
+  // rather than dropping it straight to a 40% threat cap.
+  if (!isVerified && !criticalVulnerability && issuesFound === 0) {
+    score = 70; 
+    log("<span style='color:orange'>[INFO]</span> Scanning raw bytecode. Verification recommended for full assurance.");
+  } 
+  // If the contract is verified and completely clean, give it a perfect 100%
+  else if (isVerified && !criticalVulnerability && issuesFound === 0) {
     score = 100;
   } 
-  // If a real AI critical vulnerability was caught, apply the 40% cap safely
+  // If a real critical vulnerability flag was explicitly returned in the aiReport array
   else if (criticalVulnerability && score > 40) {
     score = 40; 
-    log("<span style='color:red'>[WARN]</span> True critical vulnerabilities verified by AIVM. Score capped at 40%.");
+    log("<span style='color:red'>[WARN]</span> Critical vulnerabilities verified by AIVM. Score capped at 40%.");
   }
 
   // Update UI Meter
