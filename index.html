@@ -585,35 +585,50 @@ async function fetchSourceCodeFromExplorer(address) {
     log(`[SYS] Fetching data for ${address.slice(0,10)}...`);
     
     try {
-        // 1. Attempt to get Verified Source Code from Mainnet LightScan
-        const response = await fetch(`https://mainnet.lightscan.app/api?module=contract&action=getsourcecode&address=${address}`);
+        // 1. Force lowercase to prevent Blockscout checksum rejection
+        const safeAddress = address.toLowerCase();
+        const response = await fetch(`https://mainnet.lightscan.app/api?module=contract&action=getsourcecode&address=${safeAddress}`);
         const data = await response.json();
+
+        // 2. Intercept payload in dev console to verify rate limits vs real errors
+        console.log("LightScan API Response:", data);
 
         let rawSource = data.result?.[0]?.SourceCode || "";
         let finalSolidityCode = "";
+
+        // If the API explicitly returns an error status (like rate limiting)
+        if (data.status === "0") {
+            log(`<span style='color:orange'>[WARN]</span> API Msg: ${data.message || "Rejected"}. Using Decompiler...`);
+            return await decompileBytecode(address);
+        }
 
         if (data.status === "1" && rawSource.trim().length > 0) {
             // Check if it's a Multi-file JSON structure (starts with { or {{)
             if (rawSource.startsWith("{")) {
                 try {
-                    // Clean up double braces if present
                     let jsonClean = rawSource;
                     if (jsonClean.startsWith("{{") && jsonClean.endsWith("}}")) {
                         jsonClean = jsonClean.slice(1, -1);
                     }
                     
                     const parsedJson = JSON.parse(jsonClean);
+                    
                     // Lightscan/Etherscan standard JSON format stores files inside .sources
                     if (parsedJson.sources) {
                         for (const fileName in parsedJson.sources) {
                             finalSolidityCode += `\n/* File: ${fileName} */\n` + parsedJson.sources[fileName].content;
                         }
+                    } else if (parsedJson[Object.keys(parsedJson)[0]]?.content) {
+                        // Alternative format where files are direct keys
+                        for (const fileName in parsedJson) {
+                            finalSolidityCode += `\n/* File: ${fileName} */\n` + parsedJson[fileName].content;
+                        }
                     } else {
                         finalSolidityCode = rawSource;
                     }
                 } catch (jsonErr) {
-                    // Fallback to raw text if JSON parsing fails unexpectedly
-                    finalSolidityCode = rawSource;
+                    console.error("JSON Parse Error:", jsonErr);
+                    finalSolidityCode = rawSource; // Fallback to raw text
                 }
             } else {
                 // Standard single-file contract
@@ -626,11 +641,12 @@ async function fetchSourceCodeFromExplorer(address) {
             }
         }            
         
-        // 2. FALLBACK: Fetch raw bytecode and decompile if explorer source is unavailable
-        log("<span style='color:orange'>[WARN]</span> Unverified Contract. Initializing Bytecode Decompiler...");
+        // 3. FALLBACK
+        log("<span style='color:orange'>[WARN]</span> Contract unverified or empty API result. Initializing Bytecode Decompiler...");
         return await decompileBytecode(address);
     
     } catch (e) {
+        console.error("LightScan Fetch Error:", e);
         log("<span style='color:red'>[ERR]</span> Connection to LightScan failed.");
         return null;
     }
