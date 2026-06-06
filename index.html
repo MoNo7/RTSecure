@@ -385,7 +385,7 @@ async function startAuditProtocol() {
     // --- STAGE 2: AI Semantic Audit ---
  //   log("<strong>[STAGE 2] AI Semantic Audit Initializing...</strong>");
     
-    const response = await fetch("https://rtsecure-backend.lcai.workers.dev", {
+    const response = await fetch("https://rtsecure-backend.mimo-lcai.workers.dev", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -787,7 +787,7 @@ doc.save(`RTS_Dossier_${address ? address.slice(0, 8) : "Manual"}.pdf`);
 async function runWorkerScan(address, type) {
 log(`[${type === 0 ? 'QUICK' : 'DEEP'}] Contacting Cloudflare Worker...`);
 
-const response = await fetch("https://rtsecure-backend.lcai.workers.dev", {
+const response = await fetch("https://rtsecure-backend.mimo-lcai.workers.dev", {
 method: "POST",
 body: JSON.stringify({ address, scanType: type })
 });
